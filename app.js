@@ -120,6 +120,8 @@ const INITIAL_ANIME_LIST = [
 ];
 
 const DUO_DEFAULT_IDS = new Set(["1", "2", "3", "4", "5", "6", "7", "8"]);
+const PRE_PLACED_REVIEWS = ["Chef d'œuvre", "Classique", "Incroyable", "À voir absolument"];
+function updateSyncIndicator(available) {}
 
 // Determine current list mode: Trio (Vision, Xyltax & Limule) or Duo (Vision & Xyltax)
 const IS_TRIO = (typeof document !== 'undefined' && document.body && document.body.dataset && document.body.dataset.page === 'trio') ||
@@ -352,8 +354,11 @@ async function fetchServerAnimes() {
           try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
           isServerAvailable = true;
           const data = await res.json();
-          if (Array.isArray(data)) {
-            return data;
+          if (data && typeof data === 'object') {
+            const list = Array.isArray(data) ? data : Object.values(data);
+            if (list.length > 0) {
+              return list;
+            }
           }
         }
       } catch (err) {}
@@ -472,33 +477,41 @@ async function init() {
 }
 
 async function initApp() {
-  let serverData = null;
-  let idbData = null;
   let localData = null;
-
-  // 1. Essayer le serveur Python (animes.json sur le disque)
-  try {
-    serverData = await fetchServerAnimes();
-  } catch (e) {
-    console.warn("Serveur non disponible:", e);
-  }
-
-  // 2. Essayer IndexedDB
-  try {
-    idbData = await loadFromIndexedDB();
-  } catch (e) {
-    console.warn("IndexedDB lecture échouée:", e);
-  }
-
-  // 3. Essayer localStorage (purger tout cache obsolète ou polluant)
   try {
     localStorage.removeItem('xyltax_oscar_anime_tracker_v1');
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       localData = JSON.parse(stored);
     }
+  } catch (e) {}
+
+  // 1. Rendu immédiat avec les données disponibles (0ms de latence)
+  if (!IS_TRIO) {
+    if (Array.isArray(localData) && localData.length > 0) {
+      animeList = localData;
+    } else {
+      animeList = JSON.parse(JSON.stringify(INITIAL_ANIME_LIST));
+    }
+    updateCategoryFilterOptions();
+    renderAnimeList();
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  }
+
+  // 2. Récupérer les données du serveur / Firebase Cloud
+  let serverData = null;
+  try {
+    serverData = await fetchServerAnimes();
   } catch (e) {
-    console.warn("localStorage non accessible:", e);
+    console.warn("Serveur non disponible:", e);
+  }
+
+  // 3. Récupérer IndexedDB
+  let idbData = null;
+  try {
+    idbData = await loadFromIndexedDB();
+  } catch (e) {
+    console.warn("IndexedDB lecture échouée:", e);
   }
 
   // 4. Initialisation sécurisée et hermétique (Duo vs Trio)
@@ -521,12 +534,16 @@ async function initApp() {
 
     animeList = candidates;
 
-    // Sauvegarder la version nettoyée dans tous les stockages du trio
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
     } catch (e) {}
     saveToIndexedDB(animeList);
-    saveToServer(animeList);
+    if (serverData === null || serverData.length === 0) {
+      saveToServer(animeList);
+    }
+    updateCategoryFilterOptions();
+    renderAnimeList();
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
   } else {
     // Mode Duo : synchronisation et réconciliation intelligente
     const primary = (serverData !== null && Array.isArray(serverData) && serverData.length > 0) ? serverData :
@@ -619,20 +636,33 @@ async function initApp() {
       }
       return item;
     });
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
+    } catch (e) {}
+    saveToIndexedDB(animeList);
+    if (serverData === null || serverData.length === 0) {
+      saveToServer(animeList);
+    }
+    updateCategoryFilterOptions();
+    renderAnimeList();
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
   }
 
-  // Synchroniser immédiatement toutes les couches de sauvegarde
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
-  } catch (e) {}
-  saveToIndexedDB(animeList);
-  saveToServer(animeList);
-
-  updateSyncIndicator(isServerAvailable);
-  updateCategoryFilterOptions();
-  renderAnimeList();
-  if (window.lucide && lucide.createIcons) lucide.createIcons();
   startLiveSync();
+}
+
+let toastTimeout = null;
+function showSaveToast(message) {
+  const toast = document.getElementById('save-toast');
+  const msgEl = document.getElementById('save-toast-message');
+  if (!toast) return;
+  if (msgEl && message) msgEl.textContent = message;
+  toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
+  }, 2200);
 }
 
 function saveData(actionNotice = null) {
@@ -1495,6 +1525,33 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// Explicit window bindings for onclick handlers in dynamically generated HTML
+if (typeof window !== 'undefined') {
+  window.autoFetchAnimeInfo = autoFetchAnimeInfo;
+  window.changeStatusIntelligent = changeStatusIntelligent;
+  window.clearSearch = clearSearch;
+  window.closeDataModal = closeDataModal;
+  window.closeModal = closeModal;
+  window.closeRandomModal = closeRandomModal;
+  window.copyJsonToClipboard = copyJsonToClipboard;
+  window.deleteAnime = deleteAnime;
+  window.downloadJsonFile = downloadJsonFile;
+  window.editAnime = editAnime;
+  window.filterByTag = filterByTag;
+  window.handleFormSubmit = handleFormSubmit;
+  window.handleManualUnlock = handleManualUnlock;
+  window.importJsonData = importJsonData;
+  window.openModal = openModal;
+  window.pickRandomAnime = pickRandomAnime;
+  window.promptSetEpisode = promptSetEpisode;
+  window.renderAnimeList = renderAnimeList;
+  window.resetToInitialData = resetToInitialData;
+  window.setCategoryFilter = setCategoryFilter;
+  window.setFilter = setFilter;
+  window.updateEpisode = updateEpisode;
+  window.init = init;
 }
 
 // Run on startup reliably (whether loaded before or after DOMContentLoaded)
