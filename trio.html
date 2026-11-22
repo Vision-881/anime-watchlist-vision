@@ -66,10 +66,12 @@
 
       <!-- Quick Navigation & Actions -->
       <div class="flex items-center space-x-2 sm:space-x-3">
-        <a href="index.html" id="btn-back-to-duo" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-surface-card border border-[#232738] hover:bg-surface-cardHover hover:border-purple-500/40 text-slate-300 transition" title="Retourner à la liste Duo (Vision & Xyltax)">
-          <i data-lucide="arrow-left" class="w-4 h-4 text-purple-400"></i>
-          <span>Retour à la liste à 2</span>
-        </a>
+        <div id="duo-nav-container">
+          <a href="index.html?access=vision-xyltax" onclick="if (window.goToDuo) { goToDuo(); return false; }" id="btn-back-to-duo" class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-surface-card border border-[#232738] hover:bg-surface-cardHover hover:border-purple-500/40 text-slate-300 transition" title="Retourner à la liste Duo (Vision & Xyltax)">
+            <i data-lucide="arrow-left" class="w-4 h-4 text-purple-400"></i>
+            <span>Retour à la liste à 2</span>
+          </a>
+        </div>
 
         <button onclick="openModal()" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white shadow-lg shadow-brand-600/30 hover:shadow-brand-500/40 transition transform active:scale-95">
           <i data-lucide="plus-circle" class="w-4 h-4"></i>

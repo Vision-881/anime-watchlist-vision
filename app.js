@@ -253,11 +253,18 @@ async function loadFromIndexedDB() {
 // ==========================================
 // - Duo (index.html) : STRICTEMENT réservé à Vision & Xyltax
 // - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
-const DUO_ACCESS_KEYS = ["vision-xyltax", "xyltax-vision"];
-const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision"];
+const DUO_ACCESS_KEYS = ["vision-xyltax", "xyltax-vision", "xyltax", "vision"];
+const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
 
 const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
 const AUTH_STORAGE_KEY_TRIO = "xyltax_vision_trio_auth_token";
+
+function goToDuo() {
+  const duoSaved = (typeof localStorage !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '' : '').toLowerCase();
+  const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'vision-xyltax';
+  window.location.href = 'index.html?access=' + encodeURIComponent(token);
+}
+window.goToDuo = goToDuo;
 
 function checkAccess() {
   if (typeof window === 'undefined') return true;
@@ -790,20 +797,26 @@ function updateNavLinksWithAccess() {
     const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
 
     // Sur trio.html : masquer le bouton "Retour à la liste à 2" pour Limule
+    const duoNav = document.getElementById('duo-nav-container');
     const backToDuoBtn = document.getElementById('btn-back-to-duo');
-    if (backToDuoBtn) {
+    if (duoNav || backToDuoBtn) {
       if (!isDuoAuth) {
-        backToDuoBtn.classList.add('hidden');
+        if (duoNav) duoNav.classList.add('hidden');
+        if (backToDuoBtn) backToDuoBtn.classList.add('hidden');
       } else {
-        backToDuoBtn.classList.remove('hidden');
-        backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(duoSaved);
+        if (duoNav) duoNav.classList.remove('hidden');
+        if (backToDuoBtn) {
+          backToDuoBtn.classList.remove('hidden');
+          const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'vision-xyltax';
+          backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(token);
+        }
       }
     }
 
-    // Sur index.html : propager le lien vers la liste Trio avec la clé Duo
-    const trioLinks = document.querySelectorAll('a[href="trio.html"], a[href="./trio.html"]');
+    // Sur index.html : propager le lien vers la liste Trio avec la clé active
+    const trioLinks = document.querySelectorAll('a[href^="trio.html"], a[href^="./trio.html"]');
     trioLinks.forEach(a => {
-      const token = isDuoAuth ? duoSaved : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
+      const token = isDuoAuth ? (duoSaved || 'vision-xyltax') : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
       a.href = 'trio.html?access=' + encodeURIComponent(token);
     });
   } catch (e) {}
