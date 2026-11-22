@@ -249,20 +249,32 @@ async function loadFromIndexedDB() {
 }
 
 // ==========================================
-// CONTRÔLE D'ACCÈS & LIEN MAGIQUE
+// CONTRÔLE D'ACCÈS & LIENS MAGIQUES SÉPARÉS
 // ==========================================
-const ACCESS_KEY = "vision-xyltax-limule";
-const AUTH_STORAGE_KEY = "xyltax_vision_auth_token";
+// - Duo (index.html) : STRICTEMENT réservé à Vision & Xyltax
+// - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
+const DUO_ACCESS_KEYS = ["vision-xyltax", "xyltax-vision"];
+const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision"];
+
+const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
+const AUTH_STORAGE_KEY_TRIO = "xyltax_vision_trio_auth_token";
 
 function checkAccess() {
   if (typeof window === 'undefined') return true;
 
+  const allowedKeys = IS_TRIO ? TRIO_ACCESS_KEYS : DUO_ACCESS_KEYS;
+
   // 1. Détection via l'URL (?access=... ou ?key=...)
   const params = new URLSearchParams(window.location.search);
-  const tokenFromUrl = params.get('access') || params.get('key');
-  if (tokenFromUrl && tokenFromUrl.trim() === ACCESS_KEY) {
+  const tokenFromUrl = (params.get('access') || params.get('key') || '').trim().toLowerCase();
+  if (tokenFromUrl && allowedKeys.includes(tokenFromUrl)) {
     try {
-      localStorage.setItem(AUTH_STORAGE_KEY, ACCESS_KEY);
+      if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
+        localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
+      }
+      if (TRIO_ACCESS_KEYS.includes(tokenFromUrl)) {
+        localStorage.setItem(AUTH_STORAGE_KEY_TRIO, tokenFromUrl);
+      }
     } catch(e) {}
     // Masquer la clé de l'URL sans recharger
     params.delete('access');
@@ -275,9 +287,18 @@ function checkAccess() {
 
   // 2. Détection via localStorage (appareil déjà déverrouillé)
   try {
-    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (saved === ACCESS_KEY) {
-      return true;
+    const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
+    const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
+
+    if (IS_TRIO) {
+      if (TRIO_ACCESS_KEYS.includes(trioSaved) || TRIO_ACCESS_KEYS.includes(duoSaved)) {
+        return true;
+      }
+    } else {
+      // Sur la liste Duo : STRICTEMENT réservé à Vision & Xyltax !
+      if (DUO_ACCESS_KEYS.includes(duoSaved)) {
+        return true;
+      }
     }
   } catch(e) {}
 
@@ -290,16 +311,29 @@ function handleManualUnlock(e) {
   const errorEl = document.getElementById('unlock-error');
   if (!input) return;
 
-  if (input.value.trim() === ACCESS_KEY) {
+  const entered = input.value.trim().toLowerCase();
+  const allowedKeys = IS_TRIO ? TRIO_ACCESS_KEYS : DUO_ACCESS_KEYS;
+
+  if (allowedKeys.includes(entered)) {
     try {
-      localStorage.setItem(AUTH_STORAGE_KEY, ACCESS_KEY);
+      if (DUO_ACCESS_KEYS.includes(entered)) {
+        localStorage.setItem(AUTH_STORAGE_KEY_DUO, entered);
+      }
+      if (TRIO_ACCESS_KEYS.includes(entered)) {
+        localStorage.setItem(AUTH_STORAGE_KEY_TRIO, entered);
+      }
     } catch(e) {}
     const lockScreen = document.getElementById('lock-screen');
     if (lockScreen) lockScreen.classList.add('hidden');
     if (errorEl) errorEl.classList.add('hidden');
     initApp();
   } else {
-    if (errorEl) errorEl.classList.remove('hidden');
+    if (errorEl) {
+      errorEl.textContent = IS_TRIO 
+        ? "Clé d'accès incorrecte pour la liste Trio." 
+        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax).";
+      errorEl.classList.remove('hidden');
+    }
   }
 }
 window.handleManualUnlock = handleManualUnlock;
@@ -750,13 +784,28 @@ async function initApp() {
 function updateNavLinksWithAccess() {
   if (typeof document === 'undefined') return;
   try {
-    const isAuth = (typeof localStorage !== 'undefined' && localStorage.getItem(AUTH_STORAGE_KEY) === ACCESS_KEY);
-    if (isAuth) {
-      const duoLinks = document.querySelectorAll('a[href="index.html"], a[href="./index.html"], a[href="./"], a[href="index.html/"]');
-      duoLinks.forEach(a => a.href = 'index.html?access=' + encodeURIComponent(ACCESS_KEY));
-      const trioLinks = document.querySelectorAll('a[href="trio.html"], a[href="./trio.html"]');
-      trioLinks.forEach(a => a.href = 'trio.html?access=' + encodeURIComponent(ACCESS_KEY));
+    const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
+    const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved);
+    const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
+    const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
+
+    // Sur trio.html : masquer le bouton "Retour à la liste à 2" pour Limule
+    const backToDuoBtn = document.getElementById('btn-back-to-duo');
+    if (backToDuoBtn) {
+      if (!isDuoAuth) {
+        backToDuoBtn.classList.add('hidden');
+      } else {
+        backToDuoBtn.classList.remove('hidden');
+        backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(duoSaved);
+      }
     }
+
+    // Sur index.html : propager le lien vers la liste Trio avec la clé Duo
+    const trioLinks = document.querySelectorAll('a[href="trio.html"], a[href="./trio.html"]');
+    trioLinks.forEach(a => {
+      const token = isDuoAuth ? duoSaved : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
+      a.href = 'trio.html?access=' + encodeURIComponent(token);
+    });
   } catch (e) {}
 }
 

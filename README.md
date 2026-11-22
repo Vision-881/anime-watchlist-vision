@@ -6,17 +6,21 @@ Application web moderne, fluide et esthétique conçue pour répertorier et suiv
 
 ## 🔗 Accès en ligne direct (24h/24 & Multi-appareils)
 
-L'application est déployée en ligne sur GitHub Pages avec un système de **liens magiques privés** qui déverrouillent automatiquement l'accès pour votre groupe d'amis :
+L'application est déployée en ligne sur GitHub Pages avec un système de **liens magiques privés et sécurisés** qui gèrent les accès selon les groupes :
 
-- **🎬 Watchlist Duo (Vision & Xyltax)** :  
-  👉 [Accéder à DuoWatch](https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax-limule)  
-  *(Lien direct avec clé : `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax-limule`)*
+- **🎬 Watchlist Duo (Vision & Xyltax UNIQUEMENT)** :  
+  👉 [Accéder à DuoWatch](https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax)  
+  *(Lien direct avec clé Duo : `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax`)*  
+  *(Clé d'accès : `vision-xyltax`)*
 
 - **🍿 Watchlist Trio (Vision, Xyltax & Limule)** :  
-  👉 [Accéder à TrioWatch](https://vision-881.github.io/anime-watchlist-vision/trio.html?access=vision-xyltax-limule)  
-  *(Lien direct avec clé : `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=vision-xyltax-limule`)*
+  👉 [Accéder à TrioWatch (Lien pour Limule)](https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule)  
+  *(Lien direct pour Limule : `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`)*  
+  *(Clé d'accès : `limule` ou `vision-xyltax-limule`)*
 
-> 🔒 **Sécurité par lien magique** : Toute personne ouvrant le site sans la clé d'accès voit un écran sombre avec cadenas et ne peut pas voir votre liste. Dès que vous ouvrez l'un des liens ci-dessus, votre appareil mémorise la clé de façon permanente et l'URL est automatiquement nettoyée.
+> 🔒 **Cloisonnement strict & Sécurité :**  
+> - **Vision & Xyltax** ont accès à la liste Duo ET à la liste Trio via leur clé `vision-xyltax`.  
+> - **Limule** a accès **exclusivement** à la liste Trio via sa clé `limule`. Elle n'a aucun accès à la liste Duo (un écran de verrouillage bloque l'accès si elle essaie d'ouvrir la page Duo, et le lien de retour vers la liste à 2 lui est masqué).
 
 ---
 

@@ -45,18 +45,24 @@
 
 ---
 
-## 3. Système d'Accès Sécurisé (Lien Magique)
+## 3. Système d'Accès Sécurisé & Cloisonnement Duo / Trio (Liens Magiques)
 
-L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès à eux trois :
-- **Clé d'accès :** `vision-xyltax-limule`
-- **Liens magiques directs :**
-  - Duo : `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax-limule`
-  - Trio : `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=vision-xyltax-limule`
+L'utilisateur exige un **cloisonnement strict** entre la liste à 2 et la liste à 3 :
+- **Watchlist Duo (`index.html`) :** Réservée **EXCLUSIVEMENT** à Vision & Xyltax. Limule ne doit en AUCUN CAS y avoir accès.
+  - **Clé Duo :** `vision-xyltax` (ou `xyltax-vision`).
+  - **Lien magique Duo :** `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax`
+  - Tout utilisateur sans la clé Duo (y compris Limule) est bloqué par `#lock-screen`.
+
+- **Watchlist Trio (`trio.html`) :** Réservée à Vision, Xyltax et Limule.
+  - **Clés Trio autorisées :** `limule`, `vision-xyltax-limule`, et la clé Duo `vision-xyltax`.
+  - **Lien magique pour Limule :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`
+  - Pour Limule, le bouton de retour vers la liste à 2 (`#btn-back-to-duo`) est automatiquement masqué.
+
 - **Mécanisme :**
-  - Dès qu'un utilisateur clique sur ce lien, la clé est enregistrée dans `localStorage` (`xyltax_vision_auth_token`).
+  - Dès qu'un utilisateur clique sur son lien magique, la clé est enregistrée dans `localStorage` (`xyltax_vision_duo_auth_token` et/ou `xyltax_vision_trio_auth_token`).
   - L'URL est nettoyée automatiquement (le paramètre `?access=...` disparaît de la barre d'adresse sans rechargement).
-  - L'appareil est déverrouillé définitivement.
-  - Tout visiteur sans la clé voit un écran `#lock-screen` sombre avec cadenas "Watchlist Privée", et aucun contenu n'est injecté dans le DOM.
+  - L'appareil est déverrouillé définitivement pour les sections autorisées.
+  - Tout visiteur sans la clé voit un écran `#lock-screen` sombre avec cadenas, et aucun contenu n'est injecté dans le DOM.
 
 ---
 
