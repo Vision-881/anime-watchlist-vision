@@ -288,8 +288,8 @@ window.handleManualUnlock = handleManualUnlock;
 // PERSISTENCE MULTI-COUCHES (Firebase Cloud + Disque + IDB + LocalStorage)
 // ==========================================
 const FIREBASE_BASE_URLS = [
-  "https://anime-watchlist-vision-default-rtdb.firebaseio.com",
   "https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app",
+  "https://anime-watchlist-vision-default-rtdb.firebaseio.com",
   "https://anime-watchlist-vision.firebaseio.com",
   "https://anime-watchlist-vision.europe-west1.firebasedatabase.app"
 ];

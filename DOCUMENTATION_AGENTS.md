@@ -65,14 +65,10 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
 `app.js` gère une persistance multi-niveaux intelligente et transparente :
 
 1. **Cloud (Production en ligne sur GitHub Pages) :**
-   - **Firebase Realtime Database :** Projet `anime-watchlist-vision`.
-   - URLs ciblées automatiquement :
-     - `https://anime-watchlist-vision-default-rtdb.firebaseio.com/`
-     - `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app/`
-     - `https://anime-watchlist-vision.firebaseio.com/`
-     - `https://anime-watchlist-vision.europe-west1.firebasedatabase.app/`
-     - Support d'URL personnalisée via paramètre `?db=<url>` ou cache `xyltax_active_firebase_url`.
-   - Nœuds : `duo.json` et `trio.json`.
+   - **Firebase Realtime Database :** Projet `anime-watchlist-vision` (Région active : Belgique `europe-west1`).
+   - URL principale confirmée et active :
+     `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app`
+   - Nœuds : `/duo.json` (8 animés) et `/trio.json` (animés du trio).
    - Méthodes REST : `GET` pour lire, `PUT` pour écrire.
    - Synchronisation en direct : polling discret en arrière-plan toutes les 12 secondes lorsque la fenêtre est active (`startLiveSync()`).
 
@@ -86,23 +82,15 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
 
 ---
 
-## 5. Guide d'Activation Firebase pour l'Utilisateur
+## 5. Statut des Services en Ligne (Vérifié & Actif)
 
-Si Firebase renvoie 404 (base de données non encore créée), l'utilisateur doit :
-1. Se rendre sur la console Firebase : [https://console.firebase.google.com/project/anime-watchlist-vision/overview](https://console.firebase.google.com/project/anime-watchlist-vision/overview)
-2. Dans le menu de gauche, cliquer sur **Créer** (Build) > **Realtime Database**.
-3. Cliquer sur **Créer une base de données** (Create Database).
-4. Choisir la localisation (ex: États-Unis `us-central1` ou Belgique `europe-west1`).
-5. Dans l'étape de sécurité, choisir **Démarrer en mode test** (Start in test mode) ou définir les règles suivantes :
-   ```json
-   {
-     "rules": {
-       ".read": true,
-       ".write": true
-     }
-   }
-   ```
-6. Dès que la base est créée, `app.js` la détecte automatiquement et l'initialise avec les listes existantes.
+- **GitHub Pages :** ✅ En ligne et fonctionnel (`200 OK`)
+  - Duo : `https://vision-881.github.io/anime-watchlist-vision/`
+  - Trio : `https://vision-881.github.io/anime-watchlist-vision/trio.html`
+- **Firebase Realtime Database :** ✅ Activé en région `europe-west1` (`200 OK`)
+  - URL : `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app`
+  - Données initiales amorcées avec succès (`/duo.json` et `/trio.json`).
+  - La synchronisation temps réel fonctionne entre tous les téléphones et PCs sans aucune configuration supplémentaire.
 
 ---
 
