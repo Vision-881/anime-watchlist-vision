@@ -91,6 +91,9 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
   - URL : `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app`
   - Données initiales amorcées avec succès (`/duo.json` et `/trio.json`).
   - La synchronisation temps réel fonctionne entre tous les téléphones et PCs sans aucune configuration supplémentaire.
+- **Rendu Optimiste & Liaisons Window :**
+  - `initApp()` effectue un rendu immédiat à 0ms pour éviter tout écran blanc ou clignotement.
+  - Tous les gestionnaires d'événements inline (`onclick`, `onchange`) sont explicitement exposés sur `window` en bas de `app.js`.
 
 ---
 
