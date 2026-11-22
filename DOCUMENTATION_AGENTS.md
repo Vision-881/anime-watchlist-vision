@@ -81,6 +81,11 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
    - **LocalStorage :** `xyltax_vision_anime_tracker_v1` (Duo) et `xyltax_vision_limule_anime_tracker_v1` (Trio).
    - *Migration transparente : l'ancienne clé `xyltax_oscar_anime_tracker_v1` est lue et migrée automatiquement vers la nouvelle clé sans perte de données.*
 
+4. **Règle Fondamentale de Réconciliation (Ajout ET Retrait d'épisodes) :**
+   - **ATTENTION AGENTS :** Ne JAMAIS réintroduire de condition type `pLocal.watched >= pExisting.watched`. Les utilisateurs ont le droit d'incrémenter (+1) comme de décrémenter (-1) leurs épisodes.
+   - La réconciliation des données repose exclusivement sur la fraîcheur temporelle (`updatedAt`). Si le serveur a une valeur plus récente, le serveur gagne (même si le nombre d'épisodes est inférieur). Si le local a été modifié hors-ligne plus récemment (`localTime > existingTime`), le local gagne.
+   - Les variables `isSavingToServer` et `lastLocalEditTime` (délai de 3.5s) protègent les modifications locales contre toute interférence ou écrasement prématuré par le polling `syncFromCloud()`.
+
 ---
 
 ## 5. Statut des Services en Ligne (Vérifié & Actif)

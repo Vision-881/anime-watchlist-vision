@@ -423,59 +423,72 @@ async function fetchServerAnimes() {
   return null;
 }
 
+let isSavingToServer = false;
+let lastLocalEditTime = 0;
+
 async function saveToServer(list) {
+  isSavingToServer = true;
+  lastLocalEditTime = Date.now();
   let cloudSuccess = false;
   let diskSuccess = false;
 
-  // 1. Sauvegarde Firebase Cloud (toujours active pour synchroniser tous les appareils)
-  const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
-  for (const base of urlsToTry) {
-    try {
-      const cloudUrl = getCloudUrl(base);
-      const res = await fetch(cloudUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(list)
-      });
-      if (res.ok) {
-        activeFirebaseUrl = base;
-        try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
-        cloudSuccess = true;
-        break;
-      }
-    } catch (err) {}
-  }
-
-  // 2. Sauvegarde sur le serveur Python local (si présent)
   try {
-    const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
-      ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
-      : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
-    const controller = new AbortController();
-    const tid = setTimeout(() => controller.abort(), 1200);
-    const res = await fetch(localUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(list),
-      signal: controller.signal
-    });
-    clearTimeout(tid);
-    if (res.ok) {
-      diskSuccess = true;
+    // 1. Sauvegarde Firebase Cloud (toujours active pour synchroniser tous les appareils)
+    const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
+    for (const base of urlsToTry) {
+      try {
+        const cloudUrl = getCloudUrl(base);
+        const res = await fetch(cloudUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(list)
+        });
+        if (res.ok) {
+          activeFirebaseUrl = base;
+          try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
+          cloudSuccess = true;
+          break;
+        }
+      } catch (err) {}
     }
-  } catch (e) {}
 
-  isServerAvailable = cloudSuccess || diskSuccess;
-  return isServerAvailable;
+    // 2. Sauvegarde sur le serveur Python local (si présent)
+    try {
+      const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
+        ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
+        : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 1200);
+      const res = await fetch(localUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(list),
+        signal: controller.signal
+      });
+      clearTimeout(tid);
+      if (res.ok) {
+        diskSuccess = true;
+      }
+    } catch (e) {}
+
+    isServerAvailable = cloudSuccess || diskSuccess;
+    return isServerAvailable;
+  } finally {
+    isSavingToServer = false;
+  }
 }
 
 // Synchronisation automatique et réactive
 let liveSyncInterval = null;
 async function syncFromCloud() {
   if (document.hidden || !checkAccess()) return;
+  // Ne pas écraser pendant ou immédiatement après une modification locale
+  if (isSavingToServer || (Date.now() - lastLocalEditTime < 3500)) return;
+
   try {
     const freshData = await fetchServerAnimes();
     if (freshData && Array.isArray(freshData)) {
+      if (isSavingToServer || (Date.now() - lastLocalEditTime < 3500)) return;
       const freshClean = IS_TRIO 
         ? freshData.filter(item => !DUO_DEFAULT_IDS.has(String(item.id)))
         : freshData;
@@ -571,28 +584,39 @@ async function initApp() {
       : [];
 
     const mergedTrioMap = new Map();
-    const addAll = (list) => {
-      cleanTrio(list).forEach(item => {
-        const existing = mergedTrioMap.get(item.id);
+    const serverTrio = cleanTrio(serverData || []);
+    const localTrio = cleanTrio(idbData || localData || []);
+
+    let hasLocalChangesTrio = false;
+
+    if (serverTrio.length > 0) {
+      serverTrio.forEach(item => mergedTrioMap.set(String(item.id), { ...item }));
+      // Réconcilier les ajouts ou modifications hors-ligne strictement plus récentes
+      localTrio.forEach(localItem => {
+        const idStr = String(localItem.id);
+        const existing = mergedTrioMap.get(idStr);
         if (!existing) {
-          mergedTrioMap.set(item.id, { ...item });
+          mergedTrioMap.set(idStr, { ...localItem });
+          hasLocalChangesTrio = true;
         } else {
-          const pLocal = parseEpisodeProgress(item.episodes);
-          const pExisting = parseEpisodeProgress(existing.episodes);
-          if (pLocal.watched >= pExisting.watched) {
-            existing.episodes = item.episodes;
-            if (item.status) existing.status = item.status;
+          const localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
+          const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+          if (localTime > existingTime) {
+            existing.episodes = localItem.episodes;
+            existing.status = localItem.status;
+            existing.updatedAt = localItem.updatedAt;
+            if (localItem.rating !== undefined) existing.rating = localItem.rating;
+            if (localItem.review !== undefined) existing.review = localItem.review;
+            hasLocalChangesTrio = true;
           }
         }
       });
-    };
-
-    if (serverData && Array.isArray(serverData)) addAll(serverData);
-    if (idbData && Array.isArray(idbData)) addAll(idbData);
-    if (localData && Array.isArray(localData)) addAll(localData);
-
-    if (mergedTrioMap.size === 0) {
-      addAll(INITIAL_TRIO_LIST);
+    } else if (localTrio.length > 0) {
+      localTrio.forEach(item => mergedTrioMap.set(String(item.id), { ...item }));
+      hasLocalChangesTrio = true;
+    } else {
+      INITIAL_TRIO_LIST.forEach(item => mergedTrioMap.set(String(item.id), { ...item }));
+      hasLocalChangesTrio = true;
     }
 
     animeList = Array.from(mergedTrioMap.values());
@@ -601,13 +625,16 @@ async function initApp() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
     } catch (e) {}
     saveToIndexedDB(animeList);
-    saveToServer(animeList);
+    if (serverData === null || serverData.length === 0 || hasLocalChangesTrio) {
+      saveToServer(animeList);
+    }
     updateCategoryFilterOptions();
     renderAnimeList();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
   } else {
     // Mode Duo : synchronisation et réconciliation intelligente
-    const primary = (serverData !== null && Array.isArray(serverData) && serverData.length > 0) ? serverData :
+    const hasServerData = serverData !== null && Array.isArray(serverData) && serverData.length > 0;
+    const primary = hasServerData ? serverData :
                     (idbData !== null && Array.isArray(idbData) && idbData.length > 0) ? idbData :
                     (localData !== null && Array.isArray(localData) && localData.length > 0) ? localData :
                     INITIAL_ANIME_LIST;
@@ -615,28 +642,31 @@ async function initApp() {
     const browserCandidate = (idbData !== null && Array.isArray(idbData)) ? idbData : localData;
 
     const mergedMap = new Map();
-    primary.forEach(item => mergedMap.set(item.id, { ...item }));
+    primary.forEach(item => mergedMap.set(String(item.id), { ...item }));
 
-    if (browserCandidate && Array.isArray(browserCandidate)) {
+    let hasLocalChangesDuo = false;
+
+    if (hasServerData && browserCandidate && Array.isArray(browserCandidate)) {
       browserCandidate.forEach(localItem => {
-        const existing = mergedMap.get(localItem.id);
+        const idStr = String(localItem.id);
+        const existing = mergedMap.get(idStr);
         if (existing) {
-          const pLocal = parseEpisodeProgress(localItem.episodes);
-          const pExisting = parseEpisodeProgress(existing.episodes);
+          const localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
+          const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
 
-          const localTime = new Date(localItem.updatedAt || localItem.createdAt || 0).getTime();
-          const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
-
-          // Si le navigateur a davantage d'épisodes vus ou a été modifié plus récemment, préserver le progrès
-          if (pLocal.watched > pExisting.watched || localTime > existingTime) {
-            existing.episodes = pLocal.watched >= pExisting.watched ? localItem.episodes : existing.episodes;
-            if (pLocal.watched >= pExisting.watched && localItem.status) {
-              existing.status = localItem.status;
-            }
+          // Si l'élément local a été modifié strictement plus récemment que le serveur (hors-ligne)
+          if (localTime > existingTime) {
+            existing.episodes = localItem.episodes;
+            existing.status = localItem.status;
+            existing.updatedAt = localItem.updatedAt;
+            if (localItem.rating !== undefined) existing.rating = localItem.rating;
+            if (localItem.review !== undefined) existing.review = localItem.review;
+            hasLocalChangesDuo = true;
           }
         } else {
-          // Conserver tout animé ajouté localement
-          mergedMap.set(localItem.id, { ...localItem });
+          // Conserver tout animé ajouté localement qui n'est pas encore sur le serveur
+          mergedMap.set(idStr, { ...localItem });
+          hasLocalChangesDuo = true;
         }
       });
     }
@@ -705,7 +735,9 @@ async function initApp() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
     } catch (e) {}
     saveToIndexedDB(animeList);
-    saveToServer(animeList);
+    if (!hasServerData || hasLocalChangesDuo) {
+      saveToServer(animeList);
+    }
     updateCategoryFilterOptions();
     renderAnimeList();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -742,6 +774,7 @@ function showSaveToast(message) {
 }
 
 function saveData(actionNotice = null) {
+  lastLocalEditTime = Date.now();
   // 1. Sauvegarde localStorage (sécurisée avec try/catch)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
@@ -932,7 +965,7 @@ function parseEpisodeProgress(epStr) {
 
 function createCardHtml(anime) {
   const statusInfo = STATUS_MAP[anime.status] || STATUS_MAP.watching;
-  const displayTitle = anime.shortTitle || anime.title;
+  const displayTitle = anime.shortTitle || anime.title || "Animé";
   const hasRating = anime.rating !== null && anime.rating !== undefined && anime.rating !== '';
   const progress = parseEpisodeProgress(anime.episodes);
 
@@ -1194,7 +1227,7 @@ function changeStatusIntelligent(id, newStatus) {
 
 // Easy Episode Counter Logic
 function updateEpisode(id, delta) {
-  const anime = animeList.find(a => a.id === id);
+  const anime = animeList.find(a => String(a.id) === String(id));
   if (!anime) return;
 
   const prog = parseEpisodeProgress(anime.episodes);
@@ -1203,6 +1236,9 @@ function updateEpisode(id, delta) {
   if (prog.total !== null && newWatched > prog.total) {
     newWatched = prog.total;
   }
+
+  // Ne rien faire si on est déjà à 0 et qu'on essaie de retirer
+  if (newWatched === prog.watched && delta < 0) return;
 
   anime.episodes = prog.total !== null ? `${newWatched}/${prog.total}` : `${newWatched}`;
   anime.updatedAt = new Date().toISOString();
@@ -1219,6 +1255,8 @@ function updateEpisode(id, delta) {
     });
   } else if (delta < 0 && prog.total !== null && newWatched < prog.total && anime.status === 'completed') {
     anime.status = 'watching';
+  } else if (delta < 0 && newWatched === 0 && anime.status === 'watching') {
+    anime.status = 'dropped';
   }
 
   saveData("Progression enregistrée");
@@ -1226,7 +1264,7 @@ function updateEpisode(id, delta) {
 }
 
 function promptSetEpisode(id) {
-  const anime = animeList.find(a => a.id === id);
+  const anime = animeList.find(a => String(a.id) === String(id));
   if (!anime) return;
 
   const prog = parseEpisodeProgress(anime.episodes);
@@ -1255,6 +1293,10 @@ function promptSetEpisode(id) {
       spread: 70,
       origin: { y: 0.6 }
     });
+  } else if (prog.total !== null && newWatched < prog.total && anime.status === 'completed') {
+    anime.status = 'watching';
+  } else if (newWatched === 0 && anime.status === 'watching') {
+    anime.status = 'dropped';
   } else if (newWatched > 0 && anime.status === 'dropped') {
     anime.status = 'watching';
   }
