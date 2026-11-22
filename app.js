@@ -228,8 +228,105 @@ async function loadFromIndexedDB() {
   }
 }
 
-// Server API Sync (sauvegarde directement dans animes.json ou animes_trio.json sur le disque)
+// ==========================================
+// CONTRÔLE D'ACCÈS & LIEN MAGIQUE
+// ==========================================
+const ACCESS_KEY = "vision-xyltax-limule";
+const AUTH_STORAGE_KEY = "xyltax_vision_auth_token";
+
+function checkAccess() {
+  if (typeof window === 'undefined') return true;
+
+  // 1. Détection via l'URL (?access=... ou ?key=...)
+  const params = new URLSearchParams(window.location.search);
+  const tokenFromUrl = params.get('access') || params.get('key');
+  if (tokenFromUrl && tokenFromUrl.trim() === ACCESS_KEY) {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, ACCESS_KEY);
+    } catch(e) {}
+    // Masquer la clé de l'URL sans recharger
+    params.delete('access');
+    params.delete('key');
+    const remaining = params.toString();
+    const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '');
+    window.history.replaceState({}, document.title, cleanUrl);
+    return true;
+  }
+
+  // 2. Détection via localStorage (appareil déjà déverrouillé)
+  try {
+    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (saved === ACCESS_KEY) {
+      return true;
+    }
+  } catch(e) {}
+
+  return false;
+}
+
+function handleManualUnlock(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const input = document.getElementById('manual-access-key');
+  const errorEl = document.getElementById('unlock-error');
+  if (!input) return;
+
+  if (input.value.trim() === ACCESS_KEY) {
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, ACCESS_KEY);
+    } catch(e) {}
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.classList.add('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    initApp();
+  } else {
+    if (errorEl) errorEl.classList.remove('hidden');
+  }
+}
+window.handleManualUnlock = handleManualUnlock;
+
+// ==========================================
+// PERSISTENCE MULTI-COUCHES (Firebase Cloud + Disque + IDB + LocalStorage)
+// ==========================================
+const FIREBASE_BASE_URLS = [
+  "https://anime-watchlist-vision-default-rtdb.firebaseio.com",
+  "https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app",
+  "https://anime-watchlist-vision.firebaseio.com",
+  "https://anime-watchlist-vision.europe-west1.firebasedatabase.app"
+];
+let activeFirebaseUrl = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const dbParam = params.get('db') || params.get('database');
+    if (dbParam) {
+      const cleanDb = dbParam.replace(/\/+$/, '');
+      localStorage.setItem('xyltax_active_firebase_url', cleanDb);
+      return cleanDb;
+    }
+    return localStorage.getItem('xyltax_active_firebase_url') || null;
+  } catch (e) {
+    return null;
+  }
+})();
+
+function isOnlineHosting() {
+  if (typeof window === 'undefined') return false;
+  return window.location.protocol === 'https:' || 
+         (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:');
+}
+
+function getCloudUrl(baseUrl) {
+  const node = IS_TRIO ? 'trio' : 'duo';
+  return `${baseUrl}/${node}.json`;
+}
+
+// Server API Sync (sauvegarde Firebase Cloud ou serveur local)
 function getApiUrl() {
+  if (activeFirebaseUrl) {
+    return getCloudUrl(activeFirebaseUrl);
+  }
+  if (isOnlineHosting()) {
+    return getCloudUrl(FIREBASE_BASE_URLS[0]);
+  }
   const query = IS_TRIO ? '?list=trio' : '?list=duo';
   if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
     return 'http://localhost:8000/api/animes' + query;
@@ -240,82 +337,141 @@ function getApiUrl() {
 let isServerAvailable = false;
 
 async function fetchServerAnimes() {
-  const url = getApiUrl();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 1800);
+  // 1. Si en ligne ou Firebase déjà détecté, essayer Firebase Cloud
+  if (isOnlineHosting() || activeFirebaseUrl) {
+    const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
+    for (const base of urlsToTry) {
+      try {
+        const cloudUrl = getCloudUrl(base);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2200);
+        const res = await fetch(cloudUrl, { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          activeFirebaseUrl = base;
+          try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
+          isServerAvailable = true;
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            return data;
+          }
+        }
+      } catch (err) {}
+    }
+    // Si l'URL en cache a échoué, réinitialiser
+    if (activeFirebaseUrl) {
+      activeFirebaseUrl = null;
+      try { localStorage.removeItem('xyltax_active_firebase_url'); } catch(e){}
+    }
+  }
+
+  // 2. Repli serveur Python local
   try {
-    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
+      ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
+      : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const res = await fetch(localUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data) && (IS_TRIO ? true : data.length > 0)) {
+      if (Array.isArray(data)) {
         isServerAvailable = true;
         return data;
       }
     }
-  } catch (e) {
-    // Serveur local python non démarré ou inaccessible
-  }
+  } catch (e) {}
+
   return null;
 }
 
 async function saveToServer(list) {
-  const url = getApiUrl();
+  // 1. Sauvegarde Firebase Cloud (si hébergé en ligne ou Firebase configuré)
+  if (isOnlineHosting() || activeFirebaseUrl) {
+    const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
+    for (const base of urlsToTry) {
+      try {
+        const cloudUrl = getCloudUrl(base);
+        const res = await fetch(cloudUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(list)
+        });
+        if (res.ok) {
+          activeFirebaseUrl = base;
+          try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
+          isServerAvailable = true;
+          return true;
+        }
+      } catch (err) {}
+    }
+  }
+
+  // 2. Sauvegarde serveur Python local
   try {
-    const res = await fetch(url, {
+    const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
+      ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
+      : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
+    const res = await fetch(localUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(list)
     });
     if (res.ok) {
       isServerAvailable = true;
-      updateSyncIndicator(true);
       return true;
     }
   } catch (e) {
     isServerAvailable = false;
-    updateSyncIndicator(false);
   }
   return false;
 }
 
-// Notifications visuelles (Toast & Indicateur d'état)
-let toastTimeout = null;
-function showSaveToast(message = "Progression sauvegardée") {
-  const toast = document.getElementById('save-toast');
-  const toastMsg = document.getElementById('save-toast-message');
-  if (!toast || !toastMsg) return;
-
-  toastMsg.textContent = message;
-  toast.classList.remove('translate-y-12', 'opacity-0', 'pointer-events-none');
-  toast.classList.add('translate-y-0', 'opacity-100');
-
-  if (toastTimeout) clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => {
-    toast.classList.remove('translate-y-0', 'opacity-100');
-    toast.classList.add('translate-y-12', 'opacity-0', 'pointer-events-none');
-  }, 2300);
-}
-
-function updateSyncIndicator(serverConnected) {
-  const pill = document.getElementById('sync-status-pill');
-  const dot = document.getElementById('sync-dot');
-  const text = document.getElementById('sync-status-text');
-  if (!pill || !dot || !text) return;
-
-  if (serverConnected) {
-    dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
-    text.textContent = "Disque & Navigateur ✓";
-    pill.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-950/40 text-emerald-300 border border-emerald-500/30";
-  } else {
-    dot.className = "w-2 h-2 rounded-full bg-indigo-400";
-    text.textContent = "Navigateur ✓";
-    pill.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/60";
-  }
+// Synchronisation en direct toutes les 12 secondes
+let liveSyncInterval = null;
+function startLiveSync() {
+  if (liveSyncInterval) clearInterval(liveSyncInterval);
+  liveSyncInterval = setInterval(async () => {
+    if (document.hidden || !checkAccess()) return;
+    try {
+      const freshData = await fetchServerAnimes();
+      if (freshData && Array.isArray(freshData)) {
+        const freshClean = IS_TRIO 
+          ? freshData.filter(item => !DUO_DEFAULT_IDS.has(String(item.id)))
+          : freshData;
+        const freshStr = JSON.stringify(freshClean);
+        const currentStr = JSON.stringify(animeList);
+        if (freshStr !== currentStr) {
+          animeList = freshClean;
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList)); } catch(e){}
+          saveToIndexedDB(animeList);
+          renderAnimeList();
+        }
+      }
+    } catch(e) {}
+  }, 12000);
 }
 
 // Load Data
 async function init() {
+  // Vérification de sécurité du lien magique
+  const isAuthorized = checkAccess();
+  const lockScreen = document.getElementById('lock-screen');
+  if (!isAuthorized) {
+    if (lockScreen) {
+      lockScreen.classList.remove('hidden');
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+    return; // Arrêt complet : aucun contenu visible pour les personnes non autorisées
+  } else {
+    if (lockScreen) lockScreen.classList.add('hidden');
+  }
+
+  await initApp();
+}
+
+async function initApp() {
   let serverData = null;
   let idbData = null;
   let localData = null;
@@ -475,7 +631,8 @@ async function init() {
   updateSyncIndicator(isServerAvailable);
   updateCategoryFilterOptions();
   renderAnimeList();
-  lucide.createIcons();
+  if (window.lucide && lucide.createIcons) lucide.createIcons();
+  startLiveSync();
 }
 
 function saveData(actionNotice = null) {
@@ -749,7 +906,7 @@ function createCardHtml(anime) {
             ` : `
               <p class="text-xs text-slate-500/70 italic flex items-center gap-1.5">
                 <i data-lucide="message-square" class="w-3.5 h-3.5 text-slate-600 shrink-0"></i>
-                <span>Pas encore d'avis rédigé...</span>
+                <span>Aucun avis rédigé...</span>
               </p>
             `}
           </div>
@@ -817,7 +974,7 @@ function createCardHtml(anime) {
               target="_blank" 
               rel="noopener noreferrer"
               title="Consulter la fiche sur AniList" 
-              class="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition">
+              class="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition">
               <i data-lucide="external-link" class="w-4 h-4"></i>
             </a>
             <button 
@@ -899,18 +1056,18 @@ function changeStatusIntelligent(id, newStatus) {
       origin: { y: 0.6 }
     });
   } else if (newStatus === 'dropped') {
-    // "Pas encore" implies 0 episodes watched
+    // "A voir" implique 0 épisodes vus
     if (prog.total !== null) {
       anime.episodes = `0/${prog.total}`;
     } else {
       anime.episodes = '0';
     }
   } else if (newStatus === 'watching') {
-    // If moved to "En cours" from "Pas encore" (0 eps), start at 1
+    // Si passage à "En cours" depuis "A voir" (0 eps), démarrer à 1
     if (oldStatus === 'dropped' && prog.watched === 0) {
       anime.episodes = prog.total !== null ? `1/${prog.total}` : '1';
     } else if (oldStatus === 'completed' && prog.total !== null && prog.watched >= prog.total) {
-      // If moved back to "En cours" from completed, put at total - 1
+      // Si retour à "En cours" depuis terminé, mettre à total - 1
       const prev = Math.max(0, prog.total - 1);
       anime.episodes = `${prev}/${prog.total}`;
     }
@@ -1151,7 +1308,7 @@ async function autoFetchAnimeInfo() {
 
   fetchStatus.classList.remove('hidden');
   fetchStatus.textContent = `Recherche de "${query}" sur AniList...`;
-  fetchStatus.className = "text-[11px] text-cyan-400 mt-1 animate-pulse";
+  fetchStatus.className = "text-[11px] text-purple-400 mt-1 animate-pulse";
 
   const gqlQuery = `
     query ($search: String) {

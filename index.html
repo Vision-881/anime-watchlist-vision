@@ -19,6 +19,35 @@
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col">
 
+  <!-- LOCK SCREEN FOR UNAUTHORIZED VISITORS -->
+  <div id="lock-screen" class="fixed inset-0 z-50 hidden bg-[#0b0d14] flex items-center justify-center p-4">
+    <div class="relative w-full max-w-md rounded-2xl glass-panel border border-[#232738] p-8 text-center shadow-2xl">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-purple-300 mb-4">
+        <i data-lucide="lock" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2 font-heading">Watchlist Privée</h2>
+      <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+        Cette liste d'animés est réservée à Vision, Xyltax et Limule.<br>
+        Veuillez utiliser votre <strong>lien magique</strong> d'accès ou entrer la clé ci-dessous.
+      </p>
+      <form onsubmit="handleManualUnlock(event)" class="space-y-3">
+        <input 
+          type="password" 
+          id="manual-access-key" 
+          placeholder="Entrer la clé d'accès..." 
+          class="w-full px-4 py-2.5 rounded-xl bg-[#181b26] border border-[#2a2f42] text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-500 text-center"
+        >
+        <button 
+          type="submit" 
+          class="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-brand-600/30 transition transform active:scale-95"
+        >
+          Déverrouiller
+        </button>
+      </form>
+      <p id="unlock-error" class="text-xs text-rose-400 mt-3 hidden">Clé d'accès incorrecte.</p>
+    </div>
+  </div>
+
   <!-- TOP NAV -->
   <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0f111a]/80 backdrop-blur-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -207,8 +236,8 @@
               onclick="autoFetchAnimeInfo()" 
               id="btn-fetch"
               title="Chercher l'affiche HD et les infos automatiquement sur AniList"
-              class="px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-medium flex items-center gap-1.5 transition">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
+              class="px-3 py-2 bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-medium flex items-center gap-1.5 transition">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
               <span>Auto-fetch AniList</span>
             </button>
           </div>
