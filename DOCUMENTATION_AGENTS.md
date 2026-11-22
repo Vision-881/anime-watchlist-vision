@@ -69,16 +69,17 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
    - URL principale confirmée et active :
      `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app`
    - Nœuds : `/duo.json` (8 animés) et `/trio.json` (animés du trio).
-   - Méthodes REST : `GET` pour lire, `PUT` pour écrire.
-   - Synchronisation en direct : polling discret en arrière-plan toutes les 12 secondes lorsque la fenêtre est active (`startLiveSync()`).
+   - Méthodes REST : `GET` pour lire, `PUT` pour écrire (toujours actif en local comme sur GitHub Pages pour garantir une synchronisation totale entre tous les appareils).
+   - Synchronisation en direct : polling toutes les 3.5 secondes + réactualisation immédiate au focus / changement d'onglet (`startLiveSync()`).
+   - Synchronisation multi-onglets instantanée (0ms) via `BroadcastChannel('duowatch_sync_channel')`.
 
-2. **Serveur Python Local (Fallback) :**
+2. **Serveur Python Local (Fallback & Sauvegarde Disque Physique) :**
    - Si lancé en local via `python server.py`, synchronise avec `animes.json` (Duo) et `animes_trio.json` (Trio) via les endpoints `/api/animes?list=duo` et `/api/animes?list=trio`.
 
-3. **Navigateur (Offline Fallback) :**
+3. **Navigateur (Offline Fallback & Migration Automatique) :**
    - **IndexedDB :** `DuoAnimeWatchlistDB` (store `animes`) et `TrioAnimeWatchlistDB` (store `animes_trio`).
    - **LocalStorage :** `xyltax_vision_anime_tracker_v1` (Duo) et `xyltax_vision_limule_anime_tracker_v1` (Trio).
-   - *Note : L'ancienne clé polluante `xyltax_oscar_anime_tracker_v1` est automatiquement purgée.*
+   - *Migration transparente : l'ancienne clé `xyltax_oscar_anime_tracker_v1` est lue et migrée automatiquement vers la nouvelle clé sans perte de données.*
 
 ---
 
@@ -91,8 +92,9 @@ L'utilisateur a choisi la solution du **lien magique** pour restreindre l'accès
   - URL : `https://anime-watchlist-vision-default-rtdb.europe-west1.firebasedatabase.app`
   - Données initiales amorcées avec succès (`/duo.json` et `/trio.json`).
   - La synchronisation temps réel fonctionne entre tous les téléphones et PCs sans aucune configuration supplémentaire.
-- **Rendu Optimiste & Liaisons Window :**
+- **Rendu Optimiste, Multi-onglets & Liaisons Window :**
   - `initApp()` effectue un rendu immédiat à 0ms pour éviter tout écran blanc ou clignotement.
+  - `BroadcastChannel` synchronise les onglets d'un même navigateur instantanément.
   - Tous les gestionnaires d'événements inline (`onclick`, `onchange`) sont explicitement exposés sur `window` en bas de `app.js`.
 
 ---

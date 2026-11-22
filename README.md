@@ -38,7 +38,7 @@ Vous pouvez également lancer le projet sur votre ordinateur :
 
 L'application intègre une persistance cloud multi-couches transparente :
 - **Cloud Firebase** : Projet `anime-watchlist-vision` synchronisant en temps réel entre tous les téléphones et ordinateurs.
-- **Polling automatique** : Synchronisation toutes les 12 secondes lorsque la page est ouverte.
+- **Synchronisation en direct réactive** : Polling ultra-rapide toutes les 3.5 secondes, réactualisation immédiate au focus d'onglet et synchronisation instantanée multi-onglets (0ms) via `BroadcastChannel`.
 - **Repli automatique** : Si la connexion est interrompue, IndexedDB et LocalStorage garantissent que vos données ne sont jamais perdues.
 
 ---

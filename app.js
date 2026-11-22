@@ -69,7 +69,7 @@ const INITIAL_ANIME_LIST = [
     status: "dropped", // ❌
     rating: null,
     recommender: "Les deux",
-    episodes: "0/24",
+    episodes: "4/24",
     review: "",
     image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx145665-Qs53Mta5ngqs.jpg",
     anilistUrl: "https://anilist.co/anime/145665",
@@ -97,7 +97,7 @@ const INITIAL_ANIME_LIST = [
     status: "dropped", // ❌
     rating: null,
     recommender: "Les deux",
-    episodes: "0/13",
+    episodes: "3/13",
     review: "",
     image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx387-dS4aJivu0zPB.png",
     anilistUrl: "https://anilist.co/anime/387",
@@ -111,11 +111,29 @@ const INITIAL_ANIME_LIST = [
     status: "watching", // 🕗
     rating: null,
     recommender: "Les deux",
-    episodes: "0/13",
+    episodes: "1/13",
     review: "",
     image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx179966-g0EU7rVe2Og7.jpg",
     anilistUrl: "https://anilist.co/anime/179966",
     createdAt: "2026-11-10T12:00:00.000Z"
+  }
+];
+
+const INITIAL_TRIO_LIST = [
+  {
+    id: "1795310907194",
+    title: "higurashi",
+    shortTitle: "higurashi",
+    category: "Horreur / Mystère / Psychologique",
+    status: "watching",
+    recommender: "Les trois",
+    rating: null,
+    episodes: "0/26",
+    image: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx934-wjMlVEl4CWwg.jpg",
+    review: "",
+    anilistUrl: "https://anilist.co/anime/934",
+    createdAt: "2026-11-22T01:28:27.194Z",
+    updatedAt: "2026-11-22T01:28:32.377Z"
   }
 ];
 
@@ -338,45 +356,59 @@ function getApiUrl() {
 
 let isServerAvailable = false;
 
+let broadcastChan = null;
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    broadcastChan = new BroadcastChannel('duowatch_sync_channel');
+    broadcastChan.onmessage = (e) => {
+      if (e.data && e.data.type === 'DATA_UPDATED' && e.data.listType === (IS_TRIO ? 'trio' : 'duo')) {
+        if (Array.isArray(e.data.data)) {
+          animeList = e.data.data;
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList)); } catch(err){}
+          renderAnimeList();
+        }
+      }
+    };
+  }
+} catch(e) {}
+
 async function fetchServerAnimes() {
-  // 1. Si en ligne ou Firebase déjà détecté, essayer Firebase Cloud
-  if (isOnlineHosting() || activeFirebaseUrl) {
-    const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
-    for (const base of urlsToTry) {
-      try {
-        const cloudUrl = getCloudUrl(base);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2200);
-        const res = await fetch(cloudUrl, { signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeoutId);
-        if (res.ok) {
-          activeFirebaseUrl = base;
-          try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
-          isServerAvailable = true;
-          const data = await res.json();
-          if (data && typeof data === 'object') {
-            const list = Array.isArray(data) ? data : Object.values(data);
-            if (list.length > 0) {
-              return list;
-            }
+  // 1. Toujours interroger Firebase Cloud en priorité (en ligne et en local)
+  const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
+  for (const base of urlsToTry) {
+    try {
+      const cloudUrl = getCloudUrl(base);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2400);
+      const res = await fetch(cloudUrl, { signal: controller.signal, cache: 'no-store' });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        activeFirebaseUrl = base;
+        try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
+        isServerAvailable = true;
+        const data = await res.json();
+        if (data && typeof data === 'object') {
+          const list = Array.isArray(data) ? data : Object.values(data);
+          if (list.length > 0) {
+            return list;
           }
         }
-      } catch (err) {}
-    }
-    // Si l'URL en cache a échoué, réinitialiser
-    if (activeFirebaseUrl) {
-      activeFirebaseUrl = null;
-      try { localStorage.removeItem('xyltax_active_firebase_url'); } catch(e){}
-    }
+      }
+    } catch (err) {}
+  }
+  // Si l'URL en cache a échoué, réinitialiser
+  if (activeFirebaseUrl) {
+    activeFirebaseUrl = null;
+    try { localStorage.removeItem('xyltax_active_firebase_url'); } catch(e){}
   }
 
-  // 2. Repli serveur Python local
+  // 2. Repli serveur Python local (si lancé)
   try {
     const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
       ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
       : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const timeoutId = setTimeout(() => controller.abort(), 1200);
     const res = await fetch(localUrl, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timeoutId);
     if (res.ok) {
@@ -392,70 +424,87 @@ async function fetchServerAnimes() {
 }
 
 async function saveToServer(list) {
-  // 1. Sauvegarde Firebase Cloud (si hébergé en ligne ou Firebase configuré)
-  if (isOnlineHosting() || activeFirebaseUrl) {
-    const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
-    for (const base of urlsToTry) {
-      try {
-        const cloudUrl = getCloudUrl(base);
-        const res = await fetch(cloudUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(list)
-        });
-        if (res.ok) {
-          activeFirebaseUrl = base;
-          try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
-          isServerAvailable = true;
-          return true;
-        }
-      } catch (err) {}
-    }
+  let cloudSuccess = false;
+  let diskSuccess = false;
+
+  // 1. Sauvegarde Firebase Cloud (toujours active pour synchroniser tous les appareils)
+  const urlsToTry = activeFirebaseUrl ? [activeFirebaseUrl] : FIREBASE_BASE_URLS;
+  for (const base of urlsToTry) {
+    try {
+      const cloudUrl = getCloudUrl(base);
+      const res = await fetch(cloudUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(list)
+      });
+      if (res.ok) {
+        activeFirebaseUrl = base;
+        try { localStorage.setItem('xyltax_active_firebase_url', base); } catch(e){}
+        cloudSuccess = true;
+        break;
+      }
+    } catch (err) {}
   }
 
-  // 2. Sauvegarde serveur Python local
+  // 2. Sauvegarde sur le serveur Python local (si présent)
   try {
     const localUrl = (typeof window !== 'undefined' && window.location.protocol === 'file:')
       ? `http://localhost:8000/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`
       : `/api/animes?list=${IS_TRIO ? 'trio' : 'duo'}`;
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 1200);
     const res = await fetch(localUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(list)
+      body: JSON.stringify(list),
+      signal: controller.signal
     });
+    clearTimeout(tid);
     if (res.ok) {
-      isServerAvailable = true;
-      return true;
+      diskSuccess = true;
     }
-  } catch (e) {
-    isServerAvailable = false;
-  }
-  return false;
+  } catch (e) {}
+
+  isServerAvailable = cloudSuccess || diskSuccess;
+  return isServerAvailable;
 }
 
-// Synchronisation en direct toutes les 12 secondes
+// Synchronisation automatique et réactive
 let liveSyncInterval = null;
+async function syncFromCloud() {
+  if (document.hidden || !checkAccess()) return;
+  try {
+    const freshData = await fetchServerAnimes();
+    if (freshData && Array.isArray(freshData)) {
+      const freshClean = IS_TRIO 
+        ? freshData.filter(item => !DUO_DEFAULT_IDS.has(String(item.id)))
+        : freshData;
+      const freshStr = JSON.stringify(freshClean);
+      const currentStr = JSON.stringify(animeList);
+      if (freshStr !== currentStr) {
+        animeList = freshClean;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList)); } catch(e){}
+        saveToIndexedDB(animeList);
+        renderAnimeList();
+      }
+    }
+  } catch(e) {}
+}
+
 function startLiveSync() {
   if (liveSyncInterval) clearInterval(liveSyncInterval);
-  liveSyncInterval = setInterval(async () => {
-    if (document.hidden || !checkAccess()) return;
-    try {
-      const freshData = await fetchServerAnimes();
-      if (freshData && Array.isArray(freshData)) {
-        const freshClean = IS_TRIO 
-          ? freshData.filter(item => !DUO_DEFAULT_IDS.has(String(item.id)))
-          : freshData;
-        const freshStr = JSON.stringify(freshClean);
-        const currentStr = JSON.stringify(animeList);
-        if (freshStr !== currentStr) {
-          animeList = freshClean;
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList)); } catch(e){}
-          saveToIndexedDB(animeList);
-          renderAnimeList();
-        }
-      }
-    } catch(e) {}
-  }, 12000);
+  // Synchronisation toutes les 3.5 secondes
+  liveSyncInterval = setInterval(syncFromCloud, 3500);
+
+  // Synchronisation instantanée dès que la fenêtre/onglet redevient active
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', syncFromCloud);
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncFromCloud();
+    });
+  }
 }
 
 // Load Data
@@ -479,10 +528,10 @@ async function init() {
 async function initApp() {
   let localData = null;
   try {
-    localStorage.removeItem('xyltax_oscar_anime_tracker_v1');
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      localData = JSON.parse(stored);
+    const rawStored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('xyltax_oscar_anime_tracker_v1');
+    if (rawStored) {
+      localData = JSON.parse(rawStored);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(localData)); } catch(e){}
     }
   } catch (e) {}
 
@@ -521,26 +570,38 @@ async function initApp() {
       ? list.filter(item => !DUO_DEFAULT_IDS.has(String(item.id)) && item.title !== "Wandering Witch: The Journey of Elaina" && item.shortTitle !== "86") 
       : [];
 
-    let candidates = null;
-    if (serverData !== null && Array.isArray(serverData)) {
-      candidates = cleanTrio(serverData);
-    } else if (idbData !== null && Array.isArray(idbData)) {
-      candidates = cleanTrio(idbData);
-    } else if (localData !== null && Array.isArray(localData)) {
-      candidates = cleanTrio(localData);
-    } else {
-      candidates = [];
+    const mergedTrioMap = new Map();
+    const addAll = (list) => {
+      cleanTrio(list).forEach(item => {
+        const existing = mergedTrioMap.get(item.id);
+        if (!existing) {
+          mergedTrioMap.set(item.id, { ...item });
+        } else {
+          const pLocal = parseEpisodeProgress(item.episodes);
+          const pExisting = parseEpisodeProgress(existing.episodes);
+          if (pLocal.watched >= pExisting.watched) {
+            existing.episodes = item.episodes;
+            if (item.status) existing.status = item.status;
+          }
+        }
+      });
+    };
+
+    if (serverData && Array.isArray(serverData)) addAll(serverData);
+    if (idbData && Array.isArray(idbData)) addAll(idbData);
+    if (localData && Array.isArray(localData)) addAll(localData);
+
+    if (mergedTrioMap.size === 0) {
+      addAll(INITIAL_TRIO_LIST);
     }
 
-    animeList = candidates;
+    animeList = Array.from(mergedTrioMap.values());
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
     } catch (e) {}
     saveToIndexedDB(animeList);
-    if (serverData === null || serverData.length === 0) {
-      saveToServer(animeList);
-    }
+    saveToServer(animeList);
     updateCategoryFilterOptions();
     renderAnimeList();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
@@ -573,6 +634,9 @@ async function initApp() {
               existing.status = localItem.status;
             }
           }
+        } else {
+          // Conserver tout animé ajouté localement
+          mergedMap.set(localItem.id, { ...localItem });
         }
       });
     }
@@ -641,15 +705,27 @@ async function initApp() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(animeList));
     } catch (e) {}
     saveToIndexedDB(animeList);
-    if (serverData === null || serverData.length === 0) {
-      saveToServer(animeList);
-    }
+    saveToServer(animeList);
     updateCategoryFilterOptions();
     renderAnimeList();
     if (window.lucide && lucide.createIcons) lucide.createIcons();
   }
 
+  updateNavLinksWithAccess();
   startLiveSync();
+}
+
+function updateNavLinksWithAccess() {
+  if (typeof document === 'undefined') return;
+  try {
+    const isAuth = (typeof localStorage !== 'undefined' && localStorage.getItem(AUTH_STORAGE_KEY) === ACCESS_KEY);
+    if (isAuth) {
+      const duoLinks = document.querySelectorAll('a[href="index.html"], a[href="./index.html"], a[href="./"], a[href="index.html/"]');
+      duoLinks.forEach(a => a.href = 'index.html?access=' + encodeURIComponent(ACCESS_KEY));
+      const trioLinks = document.querySelectorAll('a[href="trio.html"], a[href="./trio.html"]');
+      trioLinks.forEach(a => a.href = 'trio.html?access=' + encodeURIComponent(ACCESS_KEY));
+    }
+  } catch (e) {}
 }
 
 let toastTimeout = null;
@@ -676,19 +752,27 @@ function saveData(actionNotice = null) {
   // 2. Sauvegarde IndexedDB (persiste toujours en mode local)
   saveToIndexedDB(animeList);
 
-  // 3. Sauvegarde sur disque si serveur actif (animes.json)
+  // 3. Sauvegarde Cloud (Firebase) + Disque (animes.json)
   saveToServer(animeList);
 
   // 4. Mettre à jour les filtres et les statistiques
   updateCategoryFilterOptions();
   updateStats();
 
-  // 5. Afficher une confirmation visuelle à Vision & Xyltax
+  // 5. Diffusion instantanée (0ms) aux autres onglets ouverts
+  if (broadcastChan) {
+    try {
+      broadcastChan.postMessage({
+        type: 'DATA_UPDATED',
+        listType: IS_TRIO ? 'trio' : 'duo',
+        data: animeList
+      });
+    } catch(e) {}
+  }
+
+  // 6. Afficher une confirmation visuelle à Vision, Xyltax & Limule
   if (actionNotice) {
-    const fullNotice = isServerAvailable 
-      ? `✓ ${actionNotice} (Disque & Navigateur)` 
-      : `✓ ${actionNotice} (Navigateur)`;
-    showSaveToast(fullNotice);
+    showSaveToast(`✓ ${actionNotice}`);
   }
 }
 
