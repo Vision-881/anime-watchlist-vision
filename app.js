@@ -1435,6 +1435,7 @@ function openModal(editId = null) {
     document.getElementById('anime-id').value = '';
     document.getElementById('form-anilist-url').value = '';
     document.getElementById('form-category').value = '';
+    document.getElementById('form-status').value = 'dropped';
     document.getElementById('form-episodes-watched').value = '0';
     document.getElementById('form-episodes-total').value = '';
     const recSelect = document.getElementById('form-recommender');
