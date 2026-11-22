@@ -1,0 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
+
+:root {
+  color-scheme: dark;
+}
+
+/* Eliminate default white borders globally (*, ::before, ::after) */
+*, ::before, ::after {
+  border-color: #232738;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #0b0d14;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(124, 58, 237, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(59, 130, 246, 0.05) 0px, transparent 60%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+}
+
+h1, h2, h3, .font-heading {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f111a;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2f42;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4c1d95;
+}
+
+/* Global Form Controls Styling - Eliminates any default white background or white borders */
+input, select, textarea, button {
+  color-scheme: dark;
+}
+
+input, select, textarea {
+  background-color: #181b26 !important;
+  color: #e2e8f0 !important;
+  border-color: #2a2f42 !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
+}
+
+select option {
+  background-color: #181b26 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Fallback utilities to ensure custom colors and dark borders always apply */
+.bg-surface-card {
+  background-color: #181b26 !important;
+}
+
+.bg-surface-dark {
+  background-color: #0f111a !important;
+}
+
+/* All borders are subtle dark borders, never bright white */
+.border,
+.border-surface-border,
+[class*="border-surface-border"] {
+  border-color: #232738 !important;
+}
+
+.hover\:bg-surface-cardHover:hover {
+  background-color: #202433 !important;
+}
+
+.glass-panel {
+  background: rgba(24, 27, 38, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid #232738 !important;
+}
+
+.glow-hover:hover {
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.3);
+  border-color: rgba(167, 139, 250, 0.4) !important;
+}
+
+/* Custom Progress Bar Gauge (Toujours visible et vibrant) */
+.progress-track {
+  width: 100%;
+  height: 8px !important;
+  background-color: #1a1e2d !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  border: 1px solid #232738 !important;
+}
+
+.progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #8b5cf6 0%, #a855f7 40%, #ec4899 100%) !important;
+  border-radius: 9999px !important;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6) !important;
+}
