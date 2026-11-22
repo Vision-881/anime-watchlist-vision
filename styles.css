@@ -109,3 +109,23 @@ select option {
   transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.6) !important;
 }
+
+/* Mobile & Touch Optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 640px) {
+  /* Prevent iOS Safari auto-zoom on focus while keeping text sharp */
+  input, select, textarea {
+    font-size: 14px !important;
+  }
+}

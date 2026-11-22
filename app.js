@@ -277,7 +277,7 @@ function goToDuo() {
 }
 window.goToDuo = goToDuo;
 
-function checkAccess() {
+function checkAccess() {  
   if (typeof window === 'undefined') return true;
 
   const allowedKeys = IS_TRIO ? TRIO_ACCESS_KEYS : DUO_ACCESS_KEYS;
@@ -1164,21 +1164,21 @@ function createCardHtml(anime) {
                   type="button"
                   onclick="updateEpisode('${anime.id}', -1)" 
                   title="Épisode précédent (-1)"
-                  class="w-6 h-6 rounded-md bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-90 border border-[#2a2f42] ${progress.watched <= 0 ? 'opacity-30 cursor-not-allowed' : ''}">
+                  class="w-7 h-7 sm:w-6 sm:h-6 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center font-bold text-sm sm:text-xs transition active:scale-90 border border-[#2a2f42] ${progress.watched <= 0 ? 'opacity-30 cursor-not-allowed' : ''}">
                   -
                 </button>
                 <button
                   type="button"
                   onclick="promptSetEpisode('${anime.id}')"
                   title="Cliquer pour modifier directement le nombre d'épisodes"
-                  class="px-2 py-0.5 rounded-md bg-[#0f111a] border border-[#2a2f42] hover:border-purple-500/60 text-xs font-bold text-white transition min-w-[3.25rem] text-center">
+                  class="px-2.5 py-1 sm:py-0.5 rounded-lg bg-[#0f111a] border border-[#2a2f42] hover:border-purple-500/60 text-xs font-bold text-white transition min-w-[3.5rem] text-center">
                   ${progress.display}
                 </button>
                 <button 
                   type="button"
                   onclick="updateEpisode('${anime.id}', 1)" 
                   title="Ajouter un épisode (+1)"
-                  class="w-6 h-6 rounded-md bg-purple-900/40 hover:bg-purple-800 text-purple-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-90 border border-purple-500/40 shadow-sm shadow-purple-500/20">
+                  class="w-7 h-7 sm:w-6 sm:h-6 rounded-lg bg-purple-900/40 hover:bg-purple-800 text-purple-300 hover:text-white flex items-center justify-center font-bold text-sm sm:text-xs transition active:scale-90 border border-purple-500/40 shadow-sm shadow-purple-500/20">
                   +
                 </button>
               </div>
@@ -1194,40 +1194,40 @@ function createCardHtml(anime) {
         </div>
 
         <!-- Card Actions -->
-        <div class="pt-3 border-t border-[#232738] flex items-center justify-between mt-auto">
+        <div class="pt-3 border-t border-[#232738] flex items-center justify-between gap-2 mt-auto">
           <!-- Direct Intelligent Status Selector -->
-          <div class="relative">
+          <div class="relative flex-1 sm:flex-none">
             <select 
               onchange="changeStatusIntelligent('${anime.id}', this.value)" 
               title="Choisir le statut directement" 
-              class="appearance-none pl-2.5 pr-6 py-1 rounded-lg text-xs font-semibold border border-[#2a2f42] transition cursor-pointer ${statusInfo.class} bg-[#181b26] hover:bg-[#202433] focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-sm">
+              class="w-full sm:w-auto appearance-none pl-2.5 pr-6 py-1.5 sm:py-1 rounded-lg text-xs font-semibold border border-[#2a2f42] transition cursor-pointer ${statusInfo.class} bg-[#181b26] hover:bg-[#202433] focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-sm">
               <option value="watching" class="bg-[#181b26] text-amber-400 font-semibold py-1" ${anime.status === 'watching' ? 'selected' : ''}>🕗 En cours</option>
               <option value="completed" class="bg-[#181b26] text-emerald-400 font-semibold py-1" ${anime.status === 'completed' ? 'selected' : ''}>✅ Validé</option>
               <option value="dropped" class="bg-[#181b26] text-rose-400 font-semibold py-1" ${anime.status === 'dropped' ? 'selected' : ''}>❌ A voir</option>
             </select>
-            <i data-lucide="chevron-down" class="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60"></i>
+            <i data-lucide="chevron-down" class="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-60"></i>
           </div>
 
           <!-- Actions (AniList link, Edit, Delete) -->
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1 shrink-0">
             <a 
               href="${anime.anilistUrl || `https://anilist.co/search/anime?search=${encodeURIComponent(anime.shortTitle || anime.title)}`}" 
               target="_blank" 
               rel="noopener noreferrer"
               title="Consulter la fiche sur AniList" 
-              class="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition">
+              class="p-2 sm:p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition active:scale-90">
               <i data-lucide="external-link" class="w-4 h-4"></i>
             </a>
             <button 
               onclick="editAnime('${anime.id}')" 
               title="Modifier" 
-              class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+              class="p-2 sm:p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition active:scale-90">
               <i data-lucide="edit-3" class="w-4 h-4"></i>
             </button>
             <button 
               onclick="deleteAnime('${anime.id}')" 
               title="Supprimer" 
-              class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition">
+              class="p-2 sm:p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition active:scale-90">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </div>
@@ -1241,14 +1241,14 @@ function createCardHtml(anime) {
 function setFilter(filter) {
   currentFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('bg-brand-600', 'text-white', 'shadow');
-    btn.classList.add('text-slate-400');
+    btn.classList.remove('bg-brand-600', 'text-white', 'shadow', 'border-brand-500');
+    btn.classList.add('text-slate-400', 'bg-[#181b26]', 'border-[#2a2f42]');
   });
 
   const activeBtn = document.getElementById(`filter-${filter}`);
   if (activeBtn) {
-    activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow');
-    activeBtn.classList.remove('text-slate-400');
+    activeBtn.classList.remove('text-slate-400', 'bg-[#181b26]', 'border-[#2a2f42]');
+    activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow', 'border-brand-500');
   }
 
   renderAnimeList();
