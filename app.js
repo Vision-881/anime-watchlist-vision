@@ -253,15 +253,26 @@ async function loadFromIndexedDB() {
 // ==========================================
 // - Duo (index.html) : STRICTEMENT réservé à Vision & Xyltax
 // - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
-const DUO_ACCESS_KEYS = ["vision-xyltax", "xyltax-vision", "xyltax", "vision"];
+const DUO_ACCESS_KEYS = ["vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
 const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
 
 const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
 const AUTH_STORAGE_KEY_TRIO = "xyltax_vision_trio_auth_token";
 
 function goToDuo() {
-  const duoSaved = (typeof localStorage !== 'undefined' ? localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '' : '').toLowerCase();
-  const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'vision-xyltax';
+  let token = 'vision-xyltax';
+  try {
+    const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
+    const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
+    const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
+    if (DUO_ACCESS_KEYS.includes(duoSaved)) {
+      token = duoSaved;
+    } else if (DUO_ACCESS_KEYS.includes(legacySaved)) {
+      token = legacySaved;
+    } else if (trioSaved && trioSaved !== 'limule' && DUO_ACCESS_KEYS.includes(trioSaved)) {
+      token = trioSaved;
+    }
+  } catch(e) {}
   window.location.href = 'index.html?access=' + encodeURIComponent(token);
 }
 window.goToDuo = goToDuo;
@@ -276,7 +287,10 @@ function checkAccess() {
   const tokenFromUrl = (params.get('access') || params.get('key') || '').trim().toLowerCase();
   if (tokenFromUrl && allowedKeys.includes(tokenFromUrl)) {
     try {
-      if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
+      if (tokenFromUrl === 'limule') {
+        localStorage.setItem('xyltax_is_limule', 'true');
+      }
+      if (DUO_ACCESS_KEYS.includes(tokenFromUrl) && tokenFromUrl !== 'limule') {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
       }
       if (TRIO_ACCESS_KEYS.includes(tokenFromUrl)) {
@@ -292,18 +306,32 @@ function checkAccess() {
     return true;
   }
 
-  // 2. Détection via localStorage (appareil déjà déverrouillé)
+  // 2. Détection via localStorage (appareil déjà déverrouillé & migration transparente)
   try {
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
+    const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
+    const isLimule = trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true';
 
     if (IS_TRIO) {
-      if (TRIO_ACCESS_KEYS.includes(trioSaved) || TRIO_ACCESS_KEYS.includes(duoSaved)) {
+      if (TRIO_ACCESS_KEYS.includes(trioSaved) || TRIO_ACCESS_KEYS.includes(duoSaved) || TRIO_ACCESS_KEYS.includes(legacySaved)) {
         return true;
       }
     } else {
-      // Sur la liste Duo : STRICTEMENT réservé à Vision & Xyltax !
+      // Sur la liste Duo : STRICTEMENT réservé à Vision & Xyltax (Limule est hermétiquement bloquée)
+      if (isLimule && !DUO_ACCESS_KEYS.includes(duoSaved)) {
+        return false;
+      }
       if (DUO_ACCESS_KEYS.includes(duoSaved)) {
+        return true;
+      }
+      // Migration automatique d'une ancienne session existante de Xyltax ou Vision
+      if (DUO_ACCESS_KEYS.includes(legacySaved) && legacySaved !== 'limule') {
+        localStorage.setItem(AUTH_STORAGE_KEY_DUO, legacySaved);
+        return true;
+      }
+      if (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule') {
+        localStorage.setItem(AUTH_STORAGE_KEY_DUO, trioSaved);
         return true;
       }
     }
@@ -323,7 +351,10 @@ function handleManualUnlock(e) {
 
   if (allowedKeys.includes(entered)) {
     try {
-      if (DUO_ACCESS_KEYS.includes(entered)) {
+      if (entered === 'limule') {
+        localStorage.setItem('xyltax_is_limule', 'true');
+      }
+      if (DUO_ACCESS_KEYS.includes(entered) && entered !== 'limule') {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, entered);
       }
       if (TRIO_ACCESS_KEYS.includes(entered)) {
@@ -338,7 +369,7 @@ function handleManualUnlock(e) {
     if (errorEl) {
       errorEl.textContent = IS_TRIO 
         ? "Clé d'accès incorrecte pour la liste Trio." 
-        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax).";
+        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax). Entrez simplement 'xyltax' ou 'vision'.";
       errorEl.classList.remove('hidden');
     }
   }
@@ -795,12 +826,13 @@ function updateNavLinksWithAccess() {
     const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved);
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
     const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
+    const isLimuleStrict = trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true';
 
     // Sur trio.html : masquer le bouton "Retour à la liste à 2" pour Limule
     const duoNav = document.getElementById('duo-nav-container');
     const backToDuoBtn = document.getElementById('btn-back-to-duo');
     if (duoNav || backToDuoBtn) {
-      if (!isDuoAuth) {
+      if (!isDuoAuth || isLimuleStrict) {
         if (duoNav) duoNav.classList.add('hidden');
         if (backToDuoBtn) backToDuoBtn.classList.add('hidden');
       } else {
