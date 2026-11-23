@@ -25,7 +25,7 @@ h1, h2, h3, .font-heading {
 }
 
 .h-48 {
-  height: 13.5rem;
+  height: 13.5rem !important;
 }
 
 /* Custom Scrollbar */
