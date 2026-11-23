@@ -260,8 +260,9 @@ const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
 const AUTH_STORAGE_KEY_TRIO = "xyltax_vision_trio_auth_token";
 
 function goToDuo() {
-  let token = 'vision-xyltax';
+  let token = 'xyltax';
   try {
+    localStorage.removeItem('xyltax_is_limule');
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
     const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
@@ -272,6 +273,7 @@ function goToDuo() {
     } else if (trioSaved && trioSaved !== 'limule' && DUO_ACCESS_KEYS.includes(trioSaved)) {
       token = trioSaved;
     }
+    localStorage.setItem(AUTH_STORAGE_KEY_DUO, token);
   } catch(e) {}
   window.location.href = 'index.html?access=' + encodeURIComponent(token);
 }
@@ -289,6 +291,8 @@ function checkAccess() {
     try {
       if (tokenFromUrl === 'limule') {
         localStorage.setItem('xyltax_is_limule', 'true');
+      } else if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
+        localStorage.removeItem('xyltax_is_limule');
       }
       if (DUO_ACCESS_KEYS.includes(tokenFromUrl) && tokenFromUrl !== 'limule') {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
@@ -353,6 +357,8 @@ function handleManualUnlock(e) {
     try {
       if (entered === 'limule') {
         localStorage.setItem('xyltax_is_limule', 'true');
+      } else if (DUO_ACCESS_KEYS.includes(entered)) {
+        localStorage.removeItem('xyltax_is_limule');
       }
       if (DUO_ACCESS_KEYS.includes(entered) && entered !== 'limule') {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, entered);
@@ -823,23 +829,23 @@ function updateNavLinksWithAccess() {
   if (typeof document === 'undefined') return;
   try {
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
-    const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved);
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
+    const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved) || (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule');
     const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
-    const isLimuleStrict = trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true';
+    const isLimuleStrict = (trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true') && !isDuoAuth;
 
-    // Sur trio.html : masquer le bouton "Retour à la liste à 2" pour Limule
+    // Sur trio.html : masquer le bouton "Retour à la liste à 2" STRICTEMENT pour Limule
     const duoNav = document.getElementById('duo-nav-container');
     const backToDuoBtn = document.getElementById('btn-back-to-duo');
     if (duoNav || backToDuoBtn) {
-      if (!isDuoAuth || isLimuleStrict) {
+      if (isLimuleStrict && !isDuoAuth) {
         if (duoNav) duoNav.classList.add('hidden');
         if (backToDuoBtn) backToDuoBtn.classList.add('hidden');
       } else {
         if (duoNav) duoNav.classList.remove('hidden');
         if (backToDuoBtn) {
           backToDuoBtn.classList.remove('hidden');
-          const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'vision-xyltax';
+          const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : (DUO_ACCESS_KEYS.includes(trioSaved) ? trioSaved : 'xyltax');
           backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(token);
         }
       }
@@ -848,7 +854,7 @@ function updateNavLinksWithAccess() {
     // Sur index.html : propager le lien vers la liste Trio avec la clé active
     const trioLinks = document.querySelectorAll('a[href^="trio.html"], a[href^="./trio.html"]');
     trioLinks.forEach(a => {
-      const token = isDuoAuth ? (duoSaved || 'vision-xyltax') : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
+      const token = isDuoAuth ? (duoSaved || (DUO_ACCESS_KEYS.includes(trioSaved) ? trioSaved : 'xyltax')) : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
       a.href = 'trio.html?access=' + encodeURIComponent(token);
     });
   } catch (e) {}
