@@ -1054,15 +1054,15 @@ function createCardHtml(anime) {
     : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
 
   return `
-    <div class="flex flex-col sm:flex-row gap-4 lg:gap-5 items-stretch">
+    <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col sm:flex-row glow-hover transition-all duration-300 hover:-translate-y-1">
       
-      <!-- Carte Affiche à gauche (Boîte arrondie dédiée h-60 / w-60 avec barre inférieure séparée) -->
-      <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden w-full sm:w-60 h-60 shrink-0 flex flex-col glow-hover transition-all duration-300 hover:-translate-y-1">
+      <!-- Image à gauche (Largeur exacte sm:w-52 lg:w-56 avec barre inférieure sous l'image) -->
+      <div class="relative w-full sm:w-52 lg:w-56 h-60 sm:h-auto min-h-[15rem] bg-slate-900 overflow-hidden shrink-0 flex flex-col">
         
-        <!-- Zone Image (Occupe le haut de la carte jusqu'à la barre inférieure) -->
+        <!-- Zone Image (Occupe le haut de la carte jusqu'à la séparation) -->
         <div class="relative w-full flex-1 min-h-0 bg-slate-900 overflow-hidden">
           ${imageContent}
-          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+          <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-surface-card/60 via-transparent to-transparent pointer-events-none"></div>
           
           <!-- Status Badge Overlay -->
           <div class="absolute top-3 left-3 z-10">
@@ -1083,17 +1083,17 @@ function createCardHtml(anime) {
         </div>
 
         <!-- Barre inférieure sous l'image (Par ... à gauche, Épisodes à droite) -->
-        <div class="h-10 px-3 bg-[#0d0f17] border-t border-[#232738] flex items-center justify-between shrink-0">
+        <div class="h-9 px-2.5 bg-[#0d0f17] border-t border-[#232738] flex items-center justify-between shrink-0">
           <div>
             ${anime.recommender ? `
-              <span class="text-[11px] font-medium text-slate-300/90 bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm border border-white/5">
+              <span class="text-[10px] sm:text-[11px] font-medium text-slate-300/90 bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm border border-white/5">
                 Par ${escapeHtml(anime.recommender)}
               </span>
             ` : '<span></span>'}
           </div>
           <div>
             ${anime.episodes ? `
-              <span class="text-[11px] font-semibold text-slate-200 bg-black/80 px-2 py-0.5 rounded-md backdrop-blur-sm border border-[#2a2f42]">
+              <span class="text-[10px] sm:text-[11px] font-semibold text-slate-200 bg-black/75 px-2 py-0.5 rounded-md backdrop-blur-sm border border-[#2a2f42]">
                 ${progress.total !== null && progress.watched >= progress.total ? '✅ ' : ''}${progress.display}
               </span>
             ` : ''}
@@ -1102,8 +1102,8 @@ function createCardHtml(anime) {
 
       </div>
 
-      <!-- Contrôles et détails à droite (Sur fond sombre sans boîte de carte englobante) -->
-      <div class="flex-1 flex flex-col justify-between py-1 min-w-0">
+      <!-- Card Body / Contrôles à droite -->
+      <div class="p-4 flex-1 flex flex-col justify-between min-w-0">
         <div>
           <div class="flex items-start justify-between gap-2 mb-1.5">
             <h3 class="font-bold text-base text-white tracking-tight leading-snug group-hover:text-purple-300 transition-colors">
