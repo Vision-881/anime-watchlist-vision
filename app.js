@@ -1071,7 +1071,7 @@ function createCardHtml(anime) {
     <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col glow-hover transition-all duration-300 hover:-translate-y-1">
       
       <!-- Image Banner / Poster Header (Format Bannière non zoomé) -->
-      <div class="relative w-full h-48 bg-slate-900 overflow-hidden">
+      <div class="relative w-full h-60 bg-slate-900 overflow-hidden">
         ${imageContent}
         <div class="absolute inset-0 bg-gradient-to-t from-surface-card via-surface-card/40 to-transparent"></div>
         
