@@ -1050,51 +1050,56 @@ function createCardHtml(anime) {
   const progress = parseEpisodeProgress(anime.episodes);
 
   const imageContent = anime.image 
-    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'"/>`
-    : `<div class="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
+    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'"/>`
+    : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
 
   return `
     <div class="flex flex-col sm:flex-row gap-4 lg:gap-5 items-stretch">
       
-      <!-- Carte Affiche à gauche (Boîte arrondie dédiée h-60 / w-60) -->
-      <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden w-full sm:w-60 h-60 shrink-0 glow-hover transition-all duration-300 hover:-translate-y-1">
-        ${imageContent}
-        <div class="absolute inset-0 bg-gradient-to-t from-surface-card/60 via-transparent to-transparent pointer-events-none"></div>
+      <!-- Carte Affiche à gauche (Boîte arrondie dédiée h-60 / w-60 avec barre inférieure séparée) -->
+      <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden w-full sm:w-60 h-60 shrink-0 flex flex-col glow-hover transition-all duration-300 hover:-translate-y-1">
         
-        <!-- Status Badge Overlay -->
-        <div class="absolute top-3 left-3 z-10">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${statusInfo.class} shadow-lg">
-            ${statusInfo.badge}
-          </span>
+        <!-- Zone Image (Occupe le haut de la carte jusqu'à la barre inférieure) -->
+        <div class="relative w-full flex-1 min-h-0 bg-slate-900 overflow-hidden">
+          ${imageContent}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none"></div>
+          
+          <!-- Status Badge Overlay -->
+          <div class="absolute top-3 left-3 z-10">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${statusInfo.class} shadow-lg">
+              ${statusInfo.badge}
+            </span>
+          </div>
+
+          <!-- Rating Badge (if any) -->
+          ${hasRating ? `
+            <div class="absolute top-3 right-3 z-10">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md shadow-lg">
+                <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400 text-amber-400"></i>
+                ${anime.rating}/10
+              </span>
+            </div>
+          ` : ''}
         </div>
 
-        <!-- Rating Badge (if any) -->
-        ${hasRating ? `
-          <div class="absolute top-3 right-3 z-10">
-            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md shadow-lg">
-              <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400 text-amber-400"></i>
-              ${anime.rating}/10
-            </span>
+        <!-- Barre inférieure sous l'image (Par ... à gauche, Épisodes à droite) -->
+        <div class="h-10 px-3 bg-[#0d0f17] border-t border-[#232738] flex items-center justify-between shrink-0">
+          <div>
+            ${anime.recommender ? `
+              <span class="text-[11px] font-medium text-slate-300/90 bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm border border-white/5">
+                Par ${escapeHtml(anime.recommender)}
+              </span>
+            ` : '<span></span>'}
           </div>
-        ` : ''}
+          <div>
+            ${anime.episodes ? `
+              <span class="text-[11px] font-semibold text-slate-200 bg-black/80 px-2 py-0.5 rounded-md backdrop-blur-sm border border-[#2a2f42]">
+                ${progress.total !== null && progress.watched >= progress.total ? '✅ ' : ''}${progress.display}
+              </span>
+            ` : ''}
+          </div>
+        </div>
 
-        <!-- Recommended by Pill -->
-        ${anime.recommender ? `
-          <div class="absolute bottom-2.5 left-3 z-10">
-            <span class="text-[11px] font-medium text-slate-300/90 bg-black/75 px-2.5 py-1 rounded-md backdrop-blur-sm border border-white/10 shadow">
-              Par ${escapeHtml(anime.recommender)}
-            </span>
-          </div>
-        ` : ''}
-
-        <!-- Episodes Pill -->
-        ${anime.episodes ? `
-          <div class="absolute bottom-2.5 right-3 z-10">
-            <span class="text-[11px] font-semibold text-slate-200 bg-black/80 px-2.5 py-1 rounded-md backdrop-blur-sm border border-[#2a2f42] shadow">
-              ${progress.total !== null && progress.watched >= progress.total ? '✅ ' : ''}${progress.display}
-            </span>
-          </div>
-        ` : ''}
       </div>
 
       <!-- Contrôles et détails à droite (Sur fond sombre sans boîte de carte englobante) -->
