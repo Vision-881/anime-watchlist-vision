@@ -1054,12 +1054,12 @@ function createCardHtml(anime) {
     : `<div class="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
 
   return `
-    <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col sm:flex-row glow-hover transition-all duration-300 hover:-translate-y-1">
+    <div class="flex flex-col sm:flex-row gap-4 lg:gap-5 items-stretch">
       
-      <!-- Affiche à gauche (Pleine hauteur sans bande noire, proportions nettes) -->
-      <div class="relative w-full h-60 sm:h-auto sm:w-52 md:w-56 lg:w-60 min-h-[16rem] bg-slate-900 overflow-hidden shrink-0">
+      <!-- Carte Affiche à gauche (Boîte arrondie dédiée h-60 / w-60) -->
+      <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden w-full sm:w-60 h-60 shrink-0 glow-hover transition-all duration-300 hover:-translate-y-1">
         ${imageContent}
-        <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-surface-card/60 via-transparent to-transparent pointer-events-none"></div>
+        <div class="absolute inset-0 bg-gradient-to-t from-surface-card/60 via-transparent to-transparent pointer-events-none"></div>
         
         <!-- Status Badge Overlay -->
         <div class="absolute top-3 left-3 z-10">
@@ -1097,8 +1097,8 @@ function createCardHtml(anime) {
         ` : ''}
       </div>
 
-      <!-- Card Body / Contrôles et détails à droite -->
-      <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between min-w-0">
+      <!-- Contrôles et détails à droite (Sur fond sombre sans boîte de carte englobante) -->
+      <div class="flex-1 flex flex-col justify-between py-1 min-w-0">
         <div>
           <div class="flex items-start justify-between gap-2 mb-1.5">
             <h3 class="font-bold text-base text-white tracking-tight leading-snug group-hover:text-purple-300 transition-colors">
