@@ -27,6 +27,9 @@ window.tailwind.config = {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      height: {
+        48: '13.5rem'
       }
     }
   }

@@ -24,6 +24,10 @@ h1, h2, h3, .font-heading {
   font-family: 'Outfit', sans-serif;
 }
 
+.h-48 {
+  height: 13.5rem;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
