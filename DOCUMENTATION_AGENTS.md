@@ -45,18 +45,27 @@
 
 ---
 
-## 3. Système d'Accès Sécurisé & Cloisonnement Duo / Trio (Liens Magiques)
+## 3. Système d'Accès Sécurisé, Clé Maître Universelle & Cloisonnement
 
-L'utilisateur exige un **cloisonnement strict** entre la liste à 2 et la liste à 3 :
-- **Watchlist Duo (`index.html`) :** Réservée **EXCLUSIVEMENT** à Vision & Xyltax. Limule ne doit en AUCUN CAS y avoir accès.
-  - **Clé Duo :** `vision-xyltax` (ou `xyltax-vision`).
-  - **Lien magique Duo :** `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax`
-  - Tout utilisateur sans la clé Duo (y compris Limule) est bloqué par `#lock-screen`.
+### 🔑 Clé Maître Créateur (Vision / Administrateur)
+- **Clés Maître reconnues :** `vision`, `master`, `admin`, `vision-master`, `vision-admin`, `oscar`.
+- **Règle absolue :** La clé Maître a un **accès total, universel et inconditionnel à TOUT sans exception** (Duo, Trio, et toutes futures listes ou pages).
+- Elle ne peut JAMAIS être restreinte, ne subit aucun verrouillage, et tous les boutons de navigation inter-listes lui sont systématiquement visibles.
+- **Lien magique universel pour le créateur :**
+  - Sur Duo : `https://vision-881.github.io/anime-watchlist-vision/?access=vision`
+  - Sur Trio : `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=vision`
+  *(Dès qu'elle est utilisée, tout l'appareil est déverrouillé de manière permanente pour toutes les sections)*.
+
+### 👥 Accès pour les invités & amis :
+- **Watchlist Duo (`index.html`) :** Réservée à Vision & Xyltax.
+  - **Clé Xyltax :** `xyltax` (ou `vision-xyltax`).
+  - **Lien magique :** `https://vision-881.github.io/anime-watchlist-vision/?access=xyltax`
+  - Limule y est strictement bloquée par l'écran de verrouillage.
 
 - **Watchlist Trio (`trio.html`) :** Réservée à Vision, Xyltax et Limule.
-  - **Clés Trio autorisées :** `limule`, `vision-xyltax-limule`, et la clé Duo `vision-xyltax`.
-  - **Lien magique pour Limule :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`
-  - Pour Limule, le bouton de retour vers la liste à 2 (`#btn-back-to-duo`) est automatiquement masqué.
+  - **Clé Limule :** `limule`.
+  - **Lien magique :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`
+  - Pour Limule, le bouton de retour vers la liste à 2 est automatiquement masqué.
 
 - **Mécanisme :**
   - Dès qu'un utilisateur clique sur son lien magique, la clé est enregistrée dans `localStorage` (`xyltax_vision_duo_auth_token` et/ou `xyltax_vision_trio_auth_token`).

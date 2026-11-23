@@ -253,25 +253,34 @@ async function loadFromIndexedDB() {
 // ==========================================
 // - Duo (index.html) : STRICTEMENT réservé à Vision & Xyltax
 // - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
-const DUO_ACCESS_KEYS = ["vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
-const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
+// - Clé Maître (Vision / Créateur) : Accès ABSOLU et UNIVERSEL à tout sans exception
+// - Duo (index.html) : Réservé à Vision & Xyltax
+// - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
+const MASTER_ACCESS_KEYS = ["vision", "master", "admin", "vision-master", "vision-admin", "oscar"];
+const DUO_ACCESS_KEYS = [...MASTER_ACCESS_KEYS, "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax"];
+const TRIO_ACCESS_KEYS = [...MASTER_ACCESS_KEYS, "limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax"];
 
 const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
 const AUTH_STORAGE_KEY_TRIO = "xyltax_vision_trio_auth_token";
+const AUTH_STORAGE_KEY_MASTER = "xyltax_vision_master_auth_token";
 
 function goToDuo() {
-  let token = 'xyltax';
+  let token = 'vision';
   try {
-    localStorage.removeItem('xyltax_is_limule');
+    const isMaster = localStorage.getItem('xyltax_is_master') === 'true';
+    const masterSaved = (localStorage.getItem(AUTH_STORAGE_KEY_MASTER) || '').toLowerCase();
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
-    const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
-    if (DUO_ACCESS_KEYS.includes(duoSaved)) {
+    
+    if (isMaster || MASTER_ACCESS_KEYS.includes(masterSaved)) {
+      token = masterSaved || 'vision';
+      localStorage.removeItem('xyltax_is_limule');
+    } else if (DUO_ACCESS_KEYS.includes(duoSaved)) {
       token = duoSaved;
-    } else if (DUO_ACCESS_KEYS.includes(legacySaved)) {
-      token = legacySaved;
-    } else if (trioSaved && trioSaved !== 'limule' && DUO_ACCESS_KEYS.includes(trioSaved)) {
+    } else if (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule') {
       token = trioSaved;
+    } else {
+      token = 'xyltax';
     }
     localStorage.setItem(AUTH_STORAGE_KEY_DUO, token);
   } catch(e) {}
@@ -287,31 +296,58 @@ function checkAccess() {
   // 1. Détection via l'URL (?access=... ou ?key=...)
   const params = new URLSearchParams(window.location.search);
   const tokenFromUrl = (params.get('access') || params.get('key') || '').trim().toLowerCase();
-  if (tokenFromUrl && allowedKeys.includes(tokenFromUrl)) {
-    try {
-      if (tokenFromUrl === 'limule') {
-        localStorage.setItem('xyltax_is_limule', 'true');
-      } else if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
-        localStorage.removeItem('xyltax_is_limule');
-      }
-      if (DUO_ACCESS_KEYS.includes(tokenFromUrl) && tokenFromUrl !== 'limule') {
+  
+  if (tokenFromUrl) {
+    // Si une clé Maître est fournie dans l'URL : déverrouillage total immédiat et permanent de TOUT
+    if (MASTER_ACCESS_KEYS.includes(tokenFromUrl)) {
+      try {
+        localStorage.setItem('xyltax_is_master', 'true');
+        localStorage.setItem(AUTH_STORAGE_KEY_MASTER, tokenFromUrl);
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
-      }
-      if (TRIO_ACCESS_KEYS.includes(tokenFromUrl)) {
         localStorage.setItem(AUTH_STORAGE_KEY_TRIO, tokenFromUrl);
-      }
-    } catch(e) {}
-    // Masquer la clé de l'URL sans recharger
-    params.delete('access');
-    params.delete('key');
-    const remaining = params.toString();
-    const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '');
-    window.history.replaceState({}, document.title, cleanUrl);
-    return true;
+        localStorage.removeItem('xyltax_is_limule');
+      } catch(e) {}
+      params.delete('access');
+      params.delete('key');
+      const remaining = params.toString();
+      const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '');
+      window.history.replaceState({}, document.title, cleanUrl);
+      return true;
+    }
+
+    if (allowedKeys.includes(tokenFromUrl)) {
+      try {
+        if (tokenFromUrl === 'limule') {
+          localStorage.setItem('xyltax_is_limule', 'true');
+        } else if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
+          localStorage.removeItem('xyltax_is_limule');
+        }
+        if (DUO_ACCESS_KEYS.includes(tokenFromUrl) && tokenFromUrl !== 'limule') {
+          localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
+        }
+        if (TRIO_ACCESS_KEYS.includes(tokenFromUrl)) {
+          localStorage.setItem(AUTH_STORAGE_KEY_TRIO, tokenFromUrl);
+        }
+      } catch(e) {}
+      // Masquer la clé de l'URL sans recharger
+      params.delete('access');
+      params.delete('key');
+      const remaining = params.toString();
+      const cleanUrl = window.location.pathname + (remaining ? `?${remaining}` : '');
+      window.history.replaceState({}, document.title, cleanUrl);
+      return true;
+    }
   }
 
-  // 2. Détection via localStorage (appareil déjà déverrouillé & migration transparente)
+  // 2. Détection via localStorage (appareil déjà déverrouillé)
   try {
+    const isMaster = localStorage.getItem('xyltax_is_master') === 'true';
+    const masterSaved = (localStorage.getItem(AUTH_STORAGE_KEY_MASTER) || '').toLowerCase();
+    if (isMaster || MASTER_ACCESS_KEYS.includes(masterSaved)) {
+      // Clé Maître : accès total à toutes les pages présentes et futures
+      return true;
+    }
+
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
     const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
@@ -351,6 +387,22 @@ function handleManualUnlock(e) {
   if (!input) return;
 
   const entered = input.value.trim().toLowerCase();
+  
+  if (MASTER_ACCESS_KEYS.includes(entered)) {
+    try {
+      localStorage.setItem('xyltax_is_master', 'true');
+      localStorage.setItem(AUTH_STORAGE_KEY_MASTER, entered);
+      localStorage.setItem(AUTH_STORAGE_KEY_DUO, entered);
+      localStorage.setItem(AUTH_STORAGE_KEY_TRIO, entered);
+      localStorage.removeItem('xyltax_is_limule');
+    } catch(e) {}
+    const lockScreen = document.getElementById('lock-screen');
+    if (lockScreen) lockScreen.classList.add('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    initApp();
+    return;
+  }
+
   const allowedKeys = IS_TRIO ? TRIO_ACCESS_KEYS : DUO_ACCESS_KEYS;
 
   if (allowedKeys.includes(entered)) {
@@ -375,7 +427,7 @@ function handleManualUnlock(e) {
     if (errorEl) {
       errorEl.textContent = IS_TRIO 
         ? "Clé d'accès incorrecte pour la liste Trio." 
-        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax). Entrez simplement 'xyltax' ou 'vision'.";
+        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax). Entrez simplement votre clé d'accès.";
       errorEl.classList.remove('hidden');
     }
   }
@@ -828,24 +880,25 @@ async function initApp() {
 function updateNavLinksWithAccess() {
   if (typeof document === 'undefined') return;
   try {
+    const isMaster = localStorage.getItem('xyltax_is_master') === 'true' || MASTER_ACCESS_KEYS.includes((localStorage.getItem(AUTH_STORAGE_KEY_MASTER) || '').toLowerCase());
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
-    const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved) || (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule');
-    const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
-    const isLimuleStrict = (trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true') && !isDuoAuth;
+    const isDuoAuth = isMaster || DUO_ACCESS_KEYS.includes(duoSaved) || (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule');
+    const isTrioAuth = isMaster || TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
+    const isLimuleStrict = !isMaster && !isDuoAuth && (trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true');
 
     // Sur trio.html : masquer le bouton "Retour à la liste à 2" STRICTEMENT pour Limule
     const duoNav = document.getElementById('duo-nav-container');
     const backToDuoBtn = document.getElementById('btn-back-to-duo');
     if (duoNav || backToDuoBtn) {
-      if (isLimuleStrict && !isDuoAuth) {
+      if (isLimuleStrict) {
         if (duoNav) duoNav.classList.add('hidden');
         if (backToDuoBtn) backToDuoBtn.classList.add('hidden');
       } else {
         if (duoNav) duoNav.classList.remove('hidden');
         if (backToDuoBtn) {
           backToDuoBtn.classList.remove('hidden');
-          const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : (DUO_ACCESS_KEYS.includes(trioSaved) ? trioSaved : 'xyltax');
+          const token = isMaster ? (localStorage.getItem(AUTH_STORAGE_KEY_MASTER) || 'vision') : (DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'xyltax');
           backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(token);
         }
       }
@@ -854,7 +907,7 @@ function updateNavLinksWithAccess() {
     // Sur index.html : propager le lien vers la liste Trio avec la clé active
     const trioLinks = document.querySelectorAll('a[href^="trio.html"], a[href^="./trio.html"]');
     trioLinks.forEach(a => {
-      const token = isDuoAuth ? (duoSaved || (DUO_ACCESS_KEYS.includes(trioSaved) ? trioSaved : 'xyltax')) : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
+      const token = isMaster ? (localStorage.getItem(AUTH_STORAGE_KEY_MASTER) || 'vision') : (isDuoAuth ? (duoSaved || (DUO_ACCESS_KEYS.includes(trioSaved) ? trioSaved : 'xyltax')) : (isTrioAuth ? (trioSaved || 'limule') : 'limule'));
       a.href = 'trio.html?access=' + encodeURIComponent(token);
     });
   } catch (e) {}
