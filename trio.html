@@ -5,24 +5,47 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trio Anime Watchlist • Vision, Xyltax & Limule</title>
   
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="tailwind.config.js"></script>
+  <!-- Tailwind Configuration (must be defined BEFORE cdn.tailwindcss.com) -->
   <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          spacing: {
-            '48': '13.5rem'
-          },
-          height: {
-            '48': '13.5rem'
+    tailwind = {
+      config: {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f5f3ff',
+                100: '#ede9fe',
+                200: '#ddd6fe',
+                300: '#c4b5fd',
+                400: '#a78bfa',
+                500: '#8b5cf6',
+                600: '#7c3aed',
+                700: '#6d28d9',
+                800: '#5b21b6',
+                900: '#4c1d95',
+                950: '#2e1065',
+              },
+              surface: {
+                dark: '#0f111a',
+                card: '#181b26',
+                cardHover: '#202433',
+                border: '#2a2f42'
+              }
+            },
+            spacing: {
+              '48': '13.5rem'
+            },
+            height: {
+              '48': '13.5rem'
+            }
           }
         }
       }
     };
   </script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Canvas Confetti -->
