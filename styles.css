@@ -115,6 +115,25 @@ select option {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Card Banner Image container - Uniform Height on all lists (Duo & Trio) */
+.anime-card-banner {
+  height: 15rem !important; /* 240px (h-60) */
+  min-height: 15rem !important;
+  max-height: 15rem !important;
+  position: relative !important;
+  width: 100% !important;
+  background-color: #0f172a !important;
+  overflow: hidden !important;
+}
+
+.anime-card-banner img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

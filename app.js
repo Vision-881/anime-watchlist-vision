@@ -1064,14 +1064,14 @@ function createCardHtml(anime) {
   const progress = parseEpisodeProgress(anime.episodes);
 
   const imageContent = anime.image 
-    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'"`
+    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'">`
     : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
 
   return `
     <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col glow-hover transition-all duration-300 hover:-translate-y-1">
       
       <!-- Image Banner / Poster Header (Format Bannière non zoomé) -->
-      <div class="relative w-full h-60 bg-slate-900 overflow-hidden">
+      <div class="anime-card-banner relative w-full h-60 bg-slate-900 overflow-hidden">
         ${imageContent}
         <div class="absolute inset-0 bg-gradient-to-t from-surface-card via-surface-card/40 to-transparent"></div>
         
