@@ -48,15 +48,15 @@
 ## 3. Système d'Accès Sécurisé & Cloisonnement Duo / Trio (Liens Magiques)
 
 L'utilisateur exige un **cloisonnement strict** entre la liste à 2 et la liste à 3 :
-- **Watchlist Duo (`index.html`) :** Réservée **EXCLUSIVEMENT** à Vision & Xyltax. Limule ne doit en AUCUN CAS y avoir accès.
-  - **Clé Duo :** `vision-xyltax` (ou `xyltax-vision`).
-  - **Lien magique Duo :** `https://vision-881.github.io/anime-watchlist-vision/?access=vision-xyltax`
-  - Tout utilisateur sans la clé Duo (y compris Limule) est bloqué par `#lock-screen`.
+- **Watchlist Duo (`index.html`) :**
+  - **Clés Duo :** `xyltax`, `vision`, `vision-xyltax`, `xyltax-vision`, `vision-xyltax-limule`, `limule`.
+  - **Lien magique Duo Xyltax :** `https://vision-881.github.io/anime-watchlist-vision/?access=xyltax`
+  - **Lien magique Duo Limule :** `https://vision-881.github.io/anime-watchlist-vision/?access=limule`
 
-- **Watchlist Trio (`trio.html`) :** Réservée à Vision, Xyltax et Limule.
-  - **Clés Trio autorisées :** `limule`, `vision-xyltax-limule`, et la clé Duo `vision-xyltax`.
-  - **Lien magique pour Limule :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`
-  - Pour Limule, le bouton de retour vers la liste à 2 (`#btn-back-to-duo`) est automatiquement masqué.
+- **Watchlist Trio (`trio.html`) :**
+  - **Clés Trio :** `xyltax`, `limule`, `vision`, `vision-xyltax`, `xyltax-vision`, `vision-xyltax-limule`.
+  - **Lien magique Trio Xyltax :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=xyltax`
+  - **Lien magique Trio Limule :** `https://vision-881.github.io/anime-watchlist-vision/trio.html?access=limule`
 
 - **Mécanisme :**
   - Dès qu'un utilisateur clique sur son lien magique, la clé est enregistrée dans `localStorage` (`xyltax_vision_duo_auth_token` et/ou `xyltax_vision_trio_auth_token`).

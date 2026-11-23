@@ -251,9 +251,9 @@ async function loadFromIndexedDB() {
 // ==========================================
 // CONTRÔLE D'ACCÈS & LIENS MAGIQUES SÉPARÉS
 // ==========================================
-// - Duo (index.html) : STRICTEMENT réservé à Vision & Xyltax
-// - Trio (trio.html) : Réservé à Vision, Xyltax & Limule
-const DUO_ACCESS_KEYS = ["vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
+// - Duo (index.html) : Vision & Xyltax (et Limule si autorisée)
+// - Trio (trio.html) : Vision, Xyltax & Limule
+const DUO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
 const TRIO_ACCESS_KEYS = ["limule", "vision-xyltax-limule", "vision-xyltax", "xyltax-vision", "xyltax", "vision"];
 
 const AUTH_STORAGE_KEY_DUO = "xyltax_vision_duo_auth_token";
@@ -269,7 +269,7 @@ function goToDuo() {
       token = duoSaved;
     } else if (DUO_ACCESS_KEYS.includes(legacySaved)) {
       token = legacySaved;
-    } else if (trioSaved && trioSaved !== 'limule' && DUO_ACCESS_KEYS.includes(trioSaved)) {
+    } else if (trioSaved && DUO_ACCESS_KEYS.includes(trioSaved)) {
       token = trioSaved;
     }
   } catch(e) {}
@@ -290,7 +290,7 @@ function checkAccess() {
       if (tokenFromUrl === 'limule') {
         localStorage.setItem('xyltax_is_limule', 'true');
       }
-      if (DUO_ACCESS_KEYS.includes(tokenFromUrl) && tokenFromUrl !== 'limule') {
+      if (DUO_ACCESS_KEYS.includes(tokenFromUrl)) {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, tokenFromUrl);
       }
       if (TRIO_ACCESS_KEYS.includes(tokenFromUrl)) {
@@ -311,26 +311,20 @@ function checkAccess() {
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
     const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
-    const isLimule = trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true';
 
     if (IS_TRIO) {
       if (TRIO_ACCESS_KEYS.includes(trioSaved) || TRIO_ACCESS_KEYS.includes(duoSaved) || TRIO_ACCESS_KEYS.includes(legacySaved)) {
         return true;
       }
     } else {
-      // Sur la liste Duo : STRICTEMENT réservé à Vision & Xyltax (Limule est hermétiquement bloquée)
-      if (isLimule && !DUO_ACCESS_KEYS.includes(duoSaved)) {
-        return false;
-      }
       if (DUO_ACCESS_KEYS.includes(duoSaved)) {
         return true;
       }
-      // Migration automatique d'une ancienne session existante de Xyltax ou Vision
-      if (DUO_ACCESS_KEYS.includes(legacySaved) && legacySaved !== 'limule') {
+      if (DUO_ACCESS_KEYS.includes(legacySaved)) {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, legacySaved);
         return true;
       }
-      if (DUO_ACCESS_KEYS.includes(trioSaved) && trioSaved !== 'limule') {
+      if (DUO_ACCESS_KEYS.includes(trioSaved)) {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, trioSaved);
         return true;
       }
@@ -354,7 +348,7 @@ function handleManualUnlock(e) {
       if (entered === 'limule') {
         localStorage.setItem('xyltax_is_limule', 'true');
       }
-      if (DUO_ACCESS_KEYS.includes(entered) && entered !== 'limule') {
+      if (DUO_ACCESS_KEYS.includes(entered)) {
         localStorage.setItem(AUTH_STORAGE_KEY_DUO, entered);
       }
       if (TRIO_ACCESS_KEYS.includes(entered)) {
@@ -368,8 +362,8 @@ function handleManualUnlock(e) {
   } else {
     if (errorEl) {
       errorEl.textContent = IS_TRIO 
-        ? "Clé d'accès incorrecte pour la liste Trio." 
-        : "Clé incorrecte (cette liste est réservée à Vision & Xyltax). Entrez simplement 'xyltax' ou 'vision'.";
+        ? "Clé d'accès incorrecte pour la liste Trio (utilisez 'xyltax' ou 'limule')." 
+        : "Clé incorrecte. Entrez simplement 'xyltax' ou 'vision'.";
       errorEl.classList.remove('hidden');
     }
   }
@@ -823,33 +817,25 @@ function updateNavLinksWithAccess() {
   if (typeof document === 'undefined') return;
   try {
     const duoSaved = (localStorage.getItem(AUTH_STORAGE_KEY_DUO) || '').toLowerCase();
-    const isDuoAuth = DUO_ACCESS_KEYS.includes(duoSaved);
     const trioSaved = (localStorage.getItem(AUTH_STORAGE_KEY_TRIO) || '').toLowerCase();
-    const isTrioAuth = TRIO_ACCESS_KEYS.includes(trioSaved) || isDuoAuth;
-    const isLimuleStrict = trioSaved === 'limule' || localStorage.getItem('xyltax_is_limule') === 'true';
+    const legacySaved = (localStorage.getItem('xyltax_vision_auth_token') || '').toLowerCase();
+    const activeToken = duoSaved || trioSaved || legacySaved || 'xyltax';
 
-    // Sur trio.html : masquer le bouton "Retour à la liste à 2" pour Limule
+    // Sur trio.html : bouton "Retour à la liste à 2"
     const duoNav = document.getElementById('duo-nav-container');
     const backToDuoBtn = document.getElementById('btn-back-to-duo');
     if (duoNav || backToDuoBtn) {
-      if (!isDuoAuth || isLimuleStrict) {
-        if (duoNav) duoNav.classList.add('hidden');
-        if (backToDuoBtn) backToDuoBtn.classList.add('hidden');
-      } else {
-        if (duoNav) duoNav.classList.remove('hidden');
-        if (backToDuoBtn) {
-          backToDuoBtn.classList.remove('hidden');
-          const token = DUO_ACCESS_KEYS.includes(duoSaved) ? duoSaved : 'vision-xyltax';
-          backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(token);
-        }
+      if (duoNav) duoNav.classList.remove('hidden');
+      if (backToDuoBtn) {
+        backToDuoBtn.classList.remove('hidden');
+        backToDuoBtn.href = 'index.html?access=' + encodeURIComponent(activeToken);
       }
     }
 
     // Sur index.html : propager le lien vers la liste Trio avec la clé active
     const trioLinks = document.querySelectorAll('a[href^="trio.html"], a[href^="./trio.html"]');
     trioLinks.forEach(a => {
-      const token = isDuoAuth ? (duoSaved || 'vision-xyltax') : (isTrioAuth ? (trioSaved || 'limule') : 'limule');
-      a.href = 'trio.html?access=' + encodeURIComponent(token);
+      a.href = 'trio.html?access=' + encodeURIComponent(activeToken);
     });
   } catch (e) {}
 }
@@ -1064,19 +1050,19 @@ function createCardHtml(anime) {
   const progress = parseEpisodeProgress(anime.episodes);
 
   const imageContent = anime.image 
-    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'"`
-    : `<div class="w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
+    ? `<img src="${escapeHtml(anime.image)}" alt="${escapeHtml(displayTitle)}" loading="lazy" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\\'absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-900/60 to-slate-900 text-purple-300 font-bold text-xl\\\'>${escapeHtml(displayTitle.slice(0, 3))}</div>'"/>`
+    : `<div class="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-tr from-purple-950 via-slate-900 to-indigo-950 text-purple-300 font-bold text-2xl tracking-wider select-none">${escapeHtml(displayTitle.slice(0, 3).toUpperCase())}</div>`;
 
   return `
-    <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col glow-hover transition-all duration-300 hover:-translate-y-1">
+    <div class="group relative rounded-2xl bg-surface-card border border-[#232738] overflow-hidden flex flex-col sm:flex-row glow-hover transition-all duration-300 hover:-translate-y-1">
       
-      <!-- Image Banner / Poster Header (Format Bannière non zoomé) -->
-      <div class="relative w-full h-60 bg-slate-900 overflow-hidden">
+      <!-- Affiche à gauche (Pleine hauteur sans bande noire, proportions nettes) -->
+      <div class="relative w-full h-60 sm:h-auto sm:w-52 md:w-56 lg:w-60 min-h-[16rem] bg-slate-900 overflow-hidden shrink-0">
         ${imageContent}
-        <div class="absolute inset-0 bg-gradient-to-t from-surface-card via-surface-card/40 to-transparent"></div>
+        <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-surface-card/60 via-transparent to-transparent pointer-events-none"></div>
         
         <!-- Status Badge Overlay -->
-        <div class="absolute top-3 left-3">
+        <div class="absolute top-3 left-3 z-10">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${statusInfo.class} shadow-lg">
             ${statusInfo.badge}
           </span>
@@ -1084,7 +1070,7 @@ function createCardHtml(anime) {
 
         <!-- Rating Badge (if any) -->
         ${hasRating ? `
-          <div class="absolute top-3 right-3">
+          <div class="absolute top-3 right-3 z-10">
             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 backdrop-blur-md shadow-lg">
               <i data-lucide="star" class="w-3.5 h-3.5 fill-amber-400 text-amber-400"></i>
               ${anime.rating}/10
@@ -1094,8 +1080,8 @@ function createCardHtml(anime) {
 
         <!-- Recommended by Pill -->
         ${anime.recommender ? `
-          <div class="absolute bottom-2 left-3">
-            <span class="text-[11px] font-medium text-slate-300/90 bg-black/60 px-2 py-0.5 rounded-md backdrop-blur-sm">
+          <div class="absolute bottom-2.5 left-3 z-10">
+            <span class="text-[11px] font-medium text-slate-300/90 bg-black/75 px-2.5 py-1 rounded-md backdrop-blur-sm border border-white/10 shadow">
               Par ${escapeHtml(anime.recommender)}
             </span>
           </div>
@@ -1103,16 +1089,16 @@ function createCardHtml(anime) {
 
         <!-- Episodes Pill -->
         ${anime.episodes ? `
-          <div class="absolute bottom-2 right-3">
-            <span class="text-[11px] font-semibold text-slate-200 bg-black/75 px-2 py-0.5 rounded-md backdrop-blur-sm border border-[#2a2f42]">
+          <div class="absolute bottom-2.5 right-3 z-10">
+            <span class="text-[11px] font-semibold text-slate-200 bg-black/80 px-2.5 py-1 rounded-md backdrop-blur-sm border border-[#2a2f42] shadow">
               ${progress.total !== null && progress.watched >= progress.total ? '✅ ' : ''}${progress.display}
             </span>
           </div>
         ` : ''}
       </div>
 
-      <!-- Card Body -->
-      <div class="p-4 flex-1 flex flex-col justify-between">
+      <!-- Card Body / Contrôles et détails à droite -->
+      <div class="p-4 sm:p-5 flex-1 flex flex-col justify-between min-w-0">
         <div>
           <div class="flex items-start justify-between gap-2 mb-1.5">
             <h3 class="font-bold text-base text-white tracking-tight leading-snug group-hover:text-purple-300 transition-colors">
